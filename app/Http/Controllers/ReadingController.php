@@ -386,9 +386,14 @@ public function show(string $reference_no) {
             throw new \Exception('Present reading must be greater than or equal to previous reading.');
         }
 
-        $propertyTypeId = DB::table('property_types')
-        ->whereRaw("LOWER(REPLACE(name, '''', '')) = ?", [strtolower(str_replace('"', '', $account->property_type))])
-        ->value('id');
+$propertyTypeId = DB::table('property_types')
+    ->whereRaw("
+        LOWER(REPLACE(REPLACE(name, '''', ''), '\"', '')) = ?
+    ", [
+        strtolower(str_replace(['"', "'"], '', $account->property_type))
+    ])
+    ->value('id');
+
 
         if (!$propertyTypeId) {
             return response()->json([
