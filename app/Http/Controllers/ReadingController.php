@@ -387,8 +387,8 @@ public function show(string $reference_no) {
         }
 
         $propertyTypeId = DB::table('property_types')
-            ->where('name', $account->property_type)
-            ->value('id');
+        ->whereRaw("LOWER(REPLACE(name, '''', '')) = ?", [strtolower(str_replace('"', '', $account->property_type))])
+        ->value('id');
 
         if (!$propertyTypeId) {
             return response()->json([

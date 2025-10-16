@@ -127,7 +127,7 @@
                                                 @endphp
                                                 <div style="display: flex; justify-content: space-between;">
                                                     <div style="text-transform: uppercase">{{$deduction['name']}}</div>
-                                                    <div style="text-transform: uppercase">{{$deduction['amount']}}</div>
+                                                    <div style="text-transform: uppercase">{{number_format($deduction['amount'], 2)}}</div>
                                                 </div>
                                             @empty
 
@@ -149,7 +149,7 @@
                                             @if(!empty($data['current_bill']['advances']))
                                                 <div style="display: flex; justify-content: space-between; margin: 5px 0 5px 0;">
                                                     <div>ADVANCES</div>
-                                                    <div>- ₱ {{$data['current_bill']['advances']}}</div>
+                                                    <div>- ₱ {{$number_format($data['current_bill']['advances'], 2)}}</div>
                                                 </div>
                                             @endif
                                         </div>
