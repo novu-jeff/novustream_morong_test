@@ -24,7 +24,7 @@ jobs:
           port: 22
           script: |
             echo "→ Starting deployment on server..."
-            cd /var/www/html/novustream
+            cd /var/www/html/novustream-morong
 
             echo "→ Fixing base ownership and permissions..."
             sudo chown -R www-data:www-data /var/www/html/novustream || true
