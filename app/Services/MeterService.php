@@ -706,17 +706,21 @@ class MeterService {
         $date = Carbon::parse($payload['date']);
         $days_due = $ruling->due_date;
 
-        if ($latest_reading) {
-            $lastReading = Carbon::parse($latest_reading->bill->bill_period_to);
+        // Safely handle previous reading's bill
+        $lastBillPeriodTo = optional(optional($latest_reading)->bill)->bill_period_to;
+
+        if ($lastBillPeriodTo) {
+            $lastReading = Carbon::parse($lastBillPeriodTo);
             $nextReading = $lastReading->addDays(1);
             $bill_period_from = $nextReading->format('Y-m-d H:i:s');
-            $bill_period_to = Carbon::parse($payload['date'])->format('Y-m-d H:i:s');
         } else {
+            // No previous bill or reading — fallback to current date range
             $bill_period_from = $date->copy()->subDays($days_due)->format('Y-m-d H:i:s');
-            $bill_period_to = $date->copy()->format('Y-m-d H:i:s');
         }
 
-        $due_date = Carbon::parse($payload['date'])->addDays($days_due)->format('Y-m-d H:i:s');
+        $bill_period_to = $date->copy()->format('Y-m-d H:i:s');
+        $due_date = $date->copy()->addDays($days_due)->format('Y-m-d H:i:s');
+
         $isHighConsumption = $payload['is_high_consumption'] == 'yes';
 
         $reading = [

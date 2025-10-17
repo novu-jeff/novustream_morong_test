@@ -33,7 +33,10 @@ class Bill extends Model
         'payor_name',
         'payment_method',
         'paid_by_reference_no',
-        'isChangeForAdvancePayment'
+        'isChangeForAdvancePayment',
+        'hitpay_reference',
+        'hitpay_payment_id',
+        'initiated_at'
     ];
 
     protected $casts = [
