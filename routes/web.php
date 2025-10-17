@@ -6,6 +6,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\PaymentBreakdownController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\HitpayController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PropertyTypesController;
 use App\Http\Controllers\RoleController;
@@ -94,9 +95,7 @@ Route::middleware('auth:admins')->prefix('admin')->group(function () {
             ->name('payments.index');
         Route::any('previous-billing', [PaymentController::class, 'upload'])
             ->name('previous-billing.upload');
-        Route::get('process/{reference_no}', [PaymentController::class, 'pay'])
-            ->name('payments.pay');
-        Route::post('process/{reference_no}', [PaymentController::class, 'pay'])
+        Route::match(['get', 'post'], 'process/{reference_no}', [PaymentController::class, 'pay'])
             ->name('payments.pay');
     });
 
@@ -172,3 +171,12 @@ Route::middleware('auth')->prefix('concessionaire')->group(function() {
 
 Route::resource('/{user_type}/profile', ProfileController::class)
         ->names('profile');
+
+
+Route::post('/payments/hitpay/create', [PaymentController::class, 'createHitPayPayment'])->name('payments.hitpay.create');
+Route::get('/payments/hitpay/callback', [PaymentController::class, 'hitpayCallback'])->name('payments.hitpay.callback');
+Route::post('/payments/hitpay/webhook', [PaymentController::class, 'hitpayWebhook'])->name('payments.hitpay.webhook');
+Route::get('/payments/redirect', [PaymentController::class, 'handleRedirect'])->name('payments.redirect');
+
+
+// Route::get('/payments/redirect', [HitpayController::class, 'redirect'])->name('hitpay.redirect');

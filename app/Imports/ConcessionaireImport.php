@@ -32,18 +32,19 @@ class ConcessionaireImport implements
     {
         return [
             'account_no' => [
+                'required',
                 function ($attribute, $value, $fail) {
-                    if (empty($value)) {
-                        $fail("Missing required field: account no");
-                        return;
-                    }
-
-                    if (DB::table('concessioner_accounts')->where('account_no', $value)->exists()) {
-                        $fail("account no `{$value}` has already been taken");
+                    // sanitize first to ensure consistency
+                    $accountNo = $this->sanitizeAccountNo($value);
+                    if (
+                        $accountNo &&
+                        DB::table('concessioner_accounts')->where('account_no', $accountNo)->exists()
+                    ) {
+                        $fail("Account no `{$accountNo}` already exists.");
                     }
                 }
             ],
-            'name' => 'required',
+            'name' => ['required'],
         ];
     }
 
@@ -61,33 +62,18 @@ class ConcessionaireImport implements
         $row = array_map('trim', $row);
 
         try {
+            // sanitize account number and extract zone
+            $accountNo = $this->sanitizeAccountNo($row['account_no'] ?? null);
+            $zone      = $this->extractZone($accountNo);
+
             $user = User::create([
                 'name'       => $row['name'],
                 'contact_no' => $row['contact_no'] ?? null,
             ]);
 
             if ($user) {
-                $property_type = $this->getPropertyType($row['rate_code']);
-
-                $zone = null;
-                if (!empty($row['account_no'])) {
-                    $cleanAccountNo = preg_replace('/\s+/', '', $row['account_no']);
-                    if (preg_match('/^(\d{3})/', $cleanAccountNo, $matches)) {
-                        $zone = $matches[1];
-                    }
-                }
-
-                $date_connected = null;
-                if (isset($row['date_connected']) && $row['date_connected'] !== '') {
-                    if (is_numeric($row['date_connected'])) {
-                        $date_connected = Carbon::instance(
-                            \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($row['date_connected'])
-                        )->format('Y-m-d');
-                    } else {
-                        $timestamp = strtotime($row['date_connected']);
-                        $date_connected = $timestamp !== false ? Carbon::createFromTimestamp($timestamp)->format('Y-m-d') : null;
-                    }
-                }
+                $property_type  = $this->getPropertyType($row['rate_code']);
+                $date_connected = $this->parseDate($row['date_connected'] ?? null);
 
                 UserAccounts::create([
                     'user_id'         => $user->id,
@@ -122,6 +108,54 @@ class ConcessionaireImport implements
             return true;
         }
         return null;
+    }
+
+    protected function sanitizeAccountNo(?string $accountNo): ?string
+    {
+        if (!$accountNo) {
+            return null;
+        }
+
+        $accountNo = trim($accountNo);
+
+        // If PhpSpreadsheet gave us a formula string, ignore it
+        if (str_starts_with($accountNo, '=')) {
+            return null;
+        }
+
+        return $accountNo;
+    }
+
+    protected function extractZone(?string $accountNo): ?string
+    {
+        if (!$accountNo) {
+            return null;
+        }
+
+        // Always take first 3 digits if present
+        if (preg_match('/^\d{3}/', $accountNo, $matches)) {
+            return $matches[0];
+        }
+
+        return null;
+    }
+
+    protected function parseDate($value): ?string
+    {
+        if (!$value) {
+            return null;
+        }
+
+        if (is_numeric($value)) {
+            return Carbon::instance(
+                \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($value)
+            )->format('Y-m-d');
+        }
+
+        $timestamp = strtotime($value);
+        return $timestamp !== false
+            ? Carbon::createFromTimestamp($timestamp)->format('Y-m-d')
+            : null;
     }
 
     public function getPropertyType($rate_code)
@@ -234,5 +268,4 @@ class ConcessionaireImport implements
     {
         return $this->rowCounter;
     }
-
 }
