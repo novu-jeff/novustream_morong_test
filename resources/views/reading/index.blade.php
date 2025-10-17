@@ -150,12 +150,6 @@
                     modalContent+=`
                         <hr>
                         <div class="row mt-3 ">
-                            @if(env('IS_TEST_READING'))
-                                <div class="col-md-12 mb-3">
-                                    <label for="reading_month" class="form-label">Reading Month</label>
-                                    <input type="date" class="form-control h-extend" id="reading_month" name="reading_month" value="${suggestedNextMonth}" placeholder="########">
-                                </div>
-                            @endif
                             <div class="col-md-12 mb-3">
                                 <label for="present_reading" class="form-label">Present Reading</label>
                                 <input type="number" class="form-control h-extend" id="present_reading" value="${presentReading}" placeholder="########">
@@ -466,12 +460,6 @@
                 modalContent+=`
                     <hr>
                     <div class="row mt-3">
-                        @if(env('IS_TEST_READING'))
-                            <div class="col-md-12 mb-3">
-                                <label for="reading_month" class="form-label">Reading Month</label>
-                                <input type="date" class="form-control h-extend" id="reading_month" name="reading_month" value="${suggestedNextMonth}" placeholder="########">
-                            </div>
-                        @endif
                         <div class="col-md-12 mb-3">
                             <label for="present_reading" class="form-label">Present Reading</label>
                             <input type="number" class="form-control h-extend" id="present_reading" value="0" placeholder="########">
