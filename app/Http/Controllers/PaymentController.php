@@ -259,6 +259,7 @@ class PaymentController extends Controller
             }
         }
 
+
         $data = $this->meterService::getBill($reference_no);
 
         if (isset($data['status']) && $data['status'] === 'error') {

@@ -44,8 +44,7 @@ class RateCodesImport implements
             '21_30'     => ['required', 'numeric'],
             '31_40'     => ['required', 'numeric'],
             '41_50'     => ['required', 'numeric'],
-            '51_1000'   => ['required', 'numeric'],
-            '1001'      => ['required', 'numeric'],
+            '51_60'     => ['required', 'numeric'],
         ];
     }
 
@@ -60,8 +59,7 @@ class RateCodesImport implements
             '21_30.required'     => 'Missing required field: 21-30',
             '31_40.required'     => 'Missing required field: 31-40',
             '41_50.required'     => 'Missing required field: 41-50',
-            '51_1000.required'   => 'Missing required field: 51-1000',
-            '1001.required'      => 'Missing required field: 1001',
+            '51_60.required'     => 'Missing required field: 51-60',
         ];
     }
 

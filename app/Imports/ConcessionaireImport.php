@@ -77,8 +77,8 @@ class ConcessionaireImport implements
 
                 UserAccounts::create([
                     'user_id'         => $user->id,
-                    'zone'            => $zone,
-                    'account_no'      => $accountNo,
+                    'zone'            => $zone, // ✅ use extracted zone
+                    'account_no'      => $row['account_no'] ?? null,
                     'address'         => $row['address'] ?? null,
                     'property_type'   => $property_type,
                     'rate_code'       => $row['rate_code'] ?? null,
@@ -101,7 +101,6 @@ class ConcessionaireImport implements
             return null;
         }
     }
-
 
     public function validateRow(array $row, $index)
     {
@@ -162,13 +161,90 @@ class ConcessionaireImport implements
     public function getPropertyType($rate_code)
     {
         $types = [
-            12 => 'Residential 1/2"',
-            22 => 'Government 1/2"',
-            32 => 'Commercial & Industrial 1/2"',
-            42 => 'Commercial C 1/2"',
-            52 => 'Commercial B 1/2"',
-            62 => 'Commercial A 1/2"',
+            1  => 'Residential/Government 1/2"',
+            2  => 'Residential/Government 3/4"',
+            3  => 'Residential/Government 1"',
+            4  => 'Residential/Government 1 1/2"',
+            5  => 'Residential/Government 2"',
+            6  => 'Residential/Government 3"',
+            7  => 'Residential/Government 4"',
+            8  => 'Residential/Government 6"',
+            9  => 'Residential/Government 8"',
+            10 => 'Residential/Government 10"',
+            11 => 'Commercial/Industrial 1/2"',
+            12 => 'Commercial/Industrial 3/4"',
+            13 => 'Commercial/Industrial 1"',
+            14 => 'Commercial/Industrial 1 1/2"',
+            15 => 'Commercial/Industrial 2"',
+            16 => 'Commercial/Industrial 3"',
+            17 => 'Commercial/Industrial 4"',
+            18 => 'Commercial/Industrial 6"',
+            19 => 'Commercial/Industrial 8"',
+            20 => 'Commercial/Industrial 10"',
+            21 => 'Commercial A 1/2"',
+            22 => 'Commercial A 3/4"',
+            23 => 'Commercial A 1"',
+            24 => 'Commercial A 1 1/2"',
+            25 => 'Commercial A 2"',
+            26 => 'Commercial A 3"',
+            27 => 'Commercial A 4"',
+            28 => 'Commercial A 6"',
+            29 => 'Commercial A 8"',
+            30 => 'Commercial A 10"',
+            31 => 'Commercial B 1/2"',
+            32 => 'Commercial B 3/4"',
+            33 => 'Commercial B 1"',
+            34 => 'Commercial B 1 1/2"',
+            35 => 'Commercial B 2"',
+            36 => 'Commercial B 3"',
+            37 => 'Commercial B 4"',
+            38 => 'Commercial B 6"',
+            39 => 'Commercial B 8"',
+            40 => 'Commercial B 10"',
+            41 => 'Commercial C 1/2"',
+            42 => 'Commercial C 3/4"',
+            43 => 'Commercial C 1"',
+            44 => 'Commercial C 1 1/2"',
+            45 => 'Commercial C 2"',
+            46 => 'Commercial C 3"',
+            47 => 'Commercial C 4"',
+            48 => 'Commercial C 6"',
+            49 => 'Commercial C 8"',
+            50 => 'Commercial C 10"',
+            51 => 'Bulk/Wholesale 1/2"',
+            52 => 'Bulk/Wholesale 3/4"',
+            53 => 'Bulk/Wholesale 1"',
+            54 => 'Bulk/Wholesale 1 1/2"',
+            55 => 'Bulk/Wholesale 2"',
+            56 => 'Bulk/Wholesale 3"',
+            57 => 'Bulk/Wholesale 4"',
+            58 => 'Bulk/Wholesale 6"',
+            59 => 'Bulk/Wholesale 8"',
+            60 => 'Bulk/Wholesale 10"',
         ];
+
+        // $types = [
+        //     "ZONE 1"	=> "POBLACION",
+        //     "ZONE 2"	=> "POBLACION",
+        //     "ZONE 3 BOOK 1" =>	"BARITAN",
+        //     'ZONE 3 BOOK 2'	=> "BARITAN",
+        //     "ZONE 4 BOOK 1" =>	"BARITAN",
+        //     "ZONE 4 BOOK 2" =>	"BARITAN",
+        //     "ZONE 5" =>	"BARITAN",
+        //     "ZONE 6" =>	"POBLACION",
+        //     "ZONE 7 BOOK 1" =>	"HILLTOP SABANG",
+        //     "ZONE 7 BOOK 2" =>	"IBAYO SABANG",
+        //     "ZONE 8" =>	"PANIBATUHAN POBLACION",
+        //     "ZONE 9" =>	"CROSSING NAGBALAYONG",
+        //     "ZONE 10" =>	"NAGBALAYONG",
+        //     "ZONE 11 BOOK 1" =>	"SABANG PROPER",
+        //     "ZONE 11 BOOK 2" =>	"RELOCATION, BACKDOOR SABANG",
+        //     "ZONE 11 BOOK 3" =>	"PAG-ASA SABANG",
+        //     "ZONE 11 BOOK 4" =>	"NAGWAWA SABANG",
+        //     "ZONE 12 BOOK 1" =>	"MABAYO PROPER",
+        //     "ZONE 12 BOOK 2" =>	"LAPLAP MABAYO",
+        //     "ZONE 13" =>	"MINANGA MABAYO",
+        // ];
 
         return $types[(int) $rate_code] ?? null;
     }

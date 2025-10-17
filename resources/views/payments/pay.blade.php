@@ -37,15 +37,15 @@
                                                 style="width: 90px; margin: 0 auto 10px auto"
                                                 alt="logo" class="web-logo">
                                         </div>
-                                        <div style="width: fit-content;">
-                                            <p style="font-size: 11px; text-transform: uppercase; margin: 0; font-weight: 600">Republic of the Philippines</p>
-                                            <p style="font-size: 15px; text-transform: uppercase; margin: 0; text-transform: uppercase; font-weight: 600">Sta. Rita Water District</p>
-                                            <p style="font-size: 12px; text-transform: uppercase; margin: 3px 0 0 0;">Zone 6 Dila-Dila, Santa Rita, Pampanga</p>
-                                            <p style="font-size: 12px; text-transform: uppercase; margin: 0;">Facebook Page: Sta. Rita Water District</p>
-                                            <p style="font-size: 12px; text-transform: uppercase; margin: 0;">Cell No. 0917-103-2421 | 0917-104-7196</p>
-                                            <p style="font-size: 12px; text-transform: uppercase; margin: 0;">TIN 261-304-832-000 Non VAT</p>
+                                            <div style="width: fit-content;">
+                                                <p style="font-size: 11px; text-transform: uppercase; margin: 0; font-weight: 600">Republic of the Philippines</p>
+                                                <p style="font-size: 15px; text-transform: uppercase; margin: 0; text-transform: uppercase; font-weight: 600">Morong Water District</p>
+                                                <p style="font-size: 12px; text-transform: uppercase; margin: 3px 0 0 0;">Zamora Extension, Poblacion Morong Bataan</p>
+                                                <!-- <p style="font-size: 12px; text-transform: uppercase; margin: 0;">Tel No.</p> -->
+                                                <p style="font-size: 12px; text-transform: uppercase; margin: 0;">Cell No. 0908-396-1654</p>
+                                                <p style="font-size: 12px; text-transform: uppercase; margin: 0;">TIN 275-087-677-000</p>
+                                            </div>
                                         </div>
-                                    </div>
                                         <div style="text-align:center; text-transform: uppercase; font-size: 16px; margin: 10px 0 10px 0;">
                                             <p style="font-size: 22px; text-transform: uppercase; margin: 0; text-transform: uppercase; font-weight: 600">Statement of Account</p>
                                         </div>
@@ -130,7 +130,7 @@
                                                 @endphp
                                                 <div style="display: flex; justify-content: space-between;">
                                                     <div style="text-transform: uppercase">{{$deduction['name']}}</div>
-                                                    <div style="text-transform: uppercase">{{$deduction['amount']}}</div>
+                                                    <div style="text-transform: uppercase">{{number_format($deduction['amount'], 2)}}</div>
                                                 </div>
                                             @empty
 
@@ -152,7 +152,7 @@
                                             @if(!empty($data['current_bill']['advances']))
                                                 <div style="display: flex; justify-content: space-between; margin: 5px 0 5px 0;">
                                                     <div>ADVANCES</div>
-                                                    <div>- ₱ {{$data['current_bill']['advances']}}</div>
+                                                    <div>- ₱ {{$number_format($data['current_bill']['advances'], 2)}}</div>
                                                 </div>
                                             @endif
                                         </div>
