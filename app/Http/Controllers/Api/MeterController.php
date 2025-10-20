@@ -23,7 +23,7 @@ class MeterController extends Controller
     }
 
     public function search(Request $request) {
-        
+
         $validator = Validator::make($request->all(), [
             'option' => 'required|string|in:qr_code,input,upload_image',
             'content' => 'required'
@@ -105,7 +105,7 @@ class MeterController extends Controller
     }
 
     public function reading(Request $request) {
-     
+
         $payload = $request->all();
 
         $validator = Validator::make($payload, [
@@ -133,7 +133,7 @@ class MeterController extends Controller
         DB::beginTransaction();
 
         try {
-            
+
             $account = $this->meterService->getAccount($payload['meter_no']);
 
             $meter_no = $account->meter_serial_no;

@@ -166,19 +166,22 @@
                             Status <small class="text-danger">( required )</small>
                         </label>
                         <select
-                            class="form-select"
-                            id="isActive"
-                            v-model="account.status"
-                            :class="{ 'is-invalid': errors && errors.isActive }"
+                        class="form-select"
+                        :id="'status_' + index"
+                        v-model="account.status"
+                        :class="{ 'is-invalid': errors && errors['accounts.' + index + '.status'] }"
                         >
-                            <option :value="null" disabled>-- SELECT --</option>
-                            <option value="AB">Active</option>
-                            <option value="BL">Blocked</option>
-                            <option value="ID">Inactive</option>
-                            <option value="IV">Invalid</option>
+                        <option :value="null" disabled>-- SELECT STATUS --</option>
+                        <option
+                            v-for="status in status_code"
+                            :key="status.id"
+                            :value="status.code"
+                        >
+                            {{ status.name }}
+                        </option>
                         </select>
-                        <small v-if="errors.isActive" class="text-danger px-1">
-                            {{ errors.isActive[0] }}
+                        <small v-if="errors['accounts.' + index + '.status']" class="text-danger px-1">
+                        {{ errors['accounts.' + index + '.status'][0] }}
                         </small>
                     </div>
                     <div class="col-md-3 mb-3">

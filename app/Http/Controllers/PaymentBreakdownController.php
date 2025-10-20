@@ -497,7 +497,7 @@ class PaymentBreakdownController extends Controller
 
                     $eligible = [
                         'senior' => 'Senior Citizen',
-                        'franchise' => 'Franchise Discount',
+                        'franchise' => 'Franchise Tax',
                         'pwd' => 'Person with disability'
                     ];
 

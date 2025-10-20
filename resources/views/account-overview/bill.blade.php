@@ -315,7 +315,7 @@
                                 <div style="display: flex; justify-content: space-between; margin: 5px 0 5px 0;">
                                     <div style="font-size: 20px; font-weight: 800; text-transform: uppercase">Current Billing:</div>
                                     <div style="font-size: 20px; font-weight: 800; text-transform: uppercase">
-                                        {{ number_format(abs((float) $data['current_bill']['total'] - (float) $arrears - (float) $totalDiscount - (float) ($franchise->amount ?? 0)), 2) }}
+                                        {{ number_format(abs((float) $data['current_bill']['total'] - (float) $arrears - (float) $totalDiscount + (float) ($franchise->amount ?? 0)), 2) }}
                                     </div>
                                 </div>
                                 @if($arrears != 0)

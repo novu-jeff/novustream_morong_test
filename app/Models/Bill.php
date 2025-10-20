@@ -19,6 +19,7 @@ class Bill extends Model
         'previous_unpaid',
         'total',
         'discount',
+        'tax',
         'penalty',
         'amount',
         'amount_after_due',
@@ -33,7 +34,9 @@ class Bill extends Model
         'payor_name',
         'payment_method',
         'paid_by_reference_no',
+        'cashier_id',
         'isChangeForAdvancePayment',
+        'high_consumption_note',
         'hitpay_reference',
         'hitpay_payment_id',
         'initiated_at'
@@ -58,5 +61,9 @@ class Bill extends Model
 
     public function discount() {
         return $this->hasMany(BillDiscount::class, 'bill_id', 'id');
+    }
+    public function cashier()
+    {
+        return $this->belongsTo(Admin::class, 'cashier_id');
     }
 }

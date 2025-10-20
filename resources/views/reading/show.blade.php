@@ -166,6 +166,7 @@
                                 $breakdown = collect($data['current_bill']['breakdown']);
                                 $arrears = $breakdown->firstWhere('name', 'Previous Balance')['amount'] ?? 0;
                                 $deductions = $breakdown->reject(fn($item) => $item['name'] === 'Previous Balance')->values();
+                                $franchiseTax = $data['current_bill']['tax'];
                             @endphp
 
 
@@ -202,20 +203,24 @@
                                     <div>- ({{$data['current_bill']['advances']}})</div>
                                 </div>
                             @endif
+                            @if($franchiseTax > 0)
+                                <div style="display: flex; justify-content: space-between;">
+                                    <div style="text-transform: uppercase">Franchise Tax</div>
+                                    <div style="text-transform: uppercase">+ ({{number_format($franchiseTax, 2)}})</div>
+                                </div>
+                            @endif
+                            <div style="display: flex; justify-content: space-between;">
+                                <div style="text-transform: uppercase;">Arrears:</div>
+                                <div style="text-transform: uppercase;">{{$arrears}}</div>
+                            </div>
                         </div>
                         <div style="margin: 5px 0 5px 0; width: 100%; height: 1px; border-bottom: 1px dashed black;"></div>
                         <div class="oversized" style="display: flex; justify-content: space-between; margin: 5px 0 5px 0;">
                             <div style="font-size: 20px; font-weight: 800; text-transform: uppercase">Current Billing:</div>
                             <div style="font-size: 20px; font-weight: 800; text-transform: uppercase">
-                                {{ number_format(abs((float) $data['current_bill']['total'] - (float) $arrears - (float) $totalDiscount - (float) ($franchise->amount ?? 0)), 2) }}
+                                {{ number_format(abs((float) $data['current_bill']['total'] - (float) $arrears - (float) $totalDiscount + (float) $franchiseTax), 2) }}
                             </div>
                         </div>
-                        @if($arrears != 0)
-                            <div style="display: flex; justify-content: space-between;">
-                                <div style="text-transform: uppercase;">Arrears:</div>
-                                <div style="text-transform: uppercase;">{{$arrears}}</div>
-                            </div>
-                        @endif
                         <div style="margin: 5px 0 5px 0; width: 100%; height: 1px; border-bottom: 1px dashed black;"></div>
                         <div class="oversized" style="display: flex; justify-content: space-between; align-items: center;">
                             <div style="text-transform: uppercase; font-size: 20px; font-weight: 800;">Amount Due:</div>
@@ -253,7 +258,7 @@
                                         {{$prevConsump['month']}}
                                     </div>
                                     <div>
-                                        {{$prevConsump['value']}}
+                                        {{ !empty($prevConsump['value']) && $prevConsump['value'] != 0 ? $prevConsump['value'] : 'NA' }}
                                     </div>
                                 </div>
                             @endforeach
@@ -312,6 +317,8 @@
                                 $remarks[] = 'high consumption';
                             }
 
+                            $note = $data['current_bill']['high_consumption_note'] ?? null;
+
                         @endphp
 
                         @if (!empty($remarks))
@@ -319,6 +326,9 @@
                                 <div style="color: red; text-transform: uppercase; text-align: center; font-style: italic; font-weight: 500;">
                                     REMARKS: {{ implodeWithAnd($remarks) }}
                                 </div>
+                            </div>
+                            <div style="text-transform: uppercase; text-align: center; font-style: bold; font-weight: bold;">
+                                Note: {{ $note }}
                             </div>
                         @endif
                         <div style="margin: 30px 0 0 0; display: flex; justify-content: center; align-items: center;">

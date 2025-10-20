@@ -62,11 +62,13 @@
                                             <div class="col-md-6 mb-3">
                                                 <label for="amount" class="form-label">Amount / Percentage</label>
                                                 <input type="text" class="form-control text-uppercase @error('amount') is-invalid @enderror" id="amount" name="amount" value="{{ old('amount', $data->amount ?? '') }}">
+                                                <small class="text-muted">
+                                                    * For percentage, please input a decimal value (e.g. <strong>0.05 = 5%</strong>, <strong>0.01 = 1%</strong>)
+                                                </small>
                                                 @error('amount')
                                                     <div class="invalid-feedback">{{ $message }}</div>
                                                 @enderror
                                             </div>
-
                                         </div>
                                     </div>
                                 </div>
@@ -254,7 +256,7 @@
                                                 <label for="eligible" class="form-label">Amount Type</label>
                                                 <select name="eligible" id="eligible" class="form-select text-uppercase @error('eligible') is-invalid @enderror">
                                                     <option value=""> - CHOOSE - </option>
-                                                    @foreach(['senior' => 'Senior Citizen', 'franchise' => 'Franchise Discount', 'pwd' => 'Person With Disability'] as $key => $label)
+                                                    @foreach(['senior' => 'Senior Citizen', 'franchise' => 'Franchise Tax', 'pwd' => 'Person With Disability'] as $key => $label)
                                                         <option value="{{ $key }}" {{ old('eligible', $data->eligible ?? '') == $key ? 'selected' : '' }}>{{ $label }}</option>
                                                     @endforeach
                                                 </select>
@@ -286,14 +288,16 @@
                                                 @enderror
                                             </div>
 
-                                            <div class="col-md-4 mb-3">
+                                            <div class="col-md-6 mb-3">
                                                 <label for="amount" class="form-label">Amount / Percentage</label>
                                                 <input type="text" class="form-control text-uppercase @error('amount') is-invalid @enderror" id="amount" name="amount" value="{{ old('amount', $data->amount ?? '') }}">
+                                                <small class="text-muted">
+                                                    * For percentage, please input a decimal value (e.g. <strong>0.05 = 5%</strong>, <strong>0.01 = 1%</strong>)
+                                                </small>
                                                 @error('amount')
                                                     <div class="invalid-feedback">{{ $message }}</div>
                                                 @enderror
                                             </div>
-
                                         </div>
                                     </div>
                                 </div>
@@ -351,6 +355,9 @@
                             <div class="col-12 col-md-3 mb-3">
                                 <label class="form-label">Amount</label>
                                 <input type="text" name="penalty[amount][]" class="form-control text-uppercase">
+                                <small class="text-muted">
+                                    * For percentage, input decimal (e.g. <strong>0.05 = 5%</strong>, <strong>0.01 = 1%</strong>)
+                                </small>
                             </div>
                         </div>
                     </div>
@@ -378,9 +385,12 @@
                             </div>
 
                             <!-- Amount -->
-                            <div class="col-12 col-md-6 mb-3">
-                                <label for="amount" class="form-label">Amount</label>
-                                <input type="text" name="service_fee[amount][]" class="form-control text-uppercase">
+                            <div class="col-12 col-md-3 mb-3">
+                                <label class="form-label">Amount</label>
+                                <input type="text" name="penalty[amount][]" class="form-control text-uppercase">
+                                <small class="text-muted">
+                                    * For percentage, input decimal (e.g. <strong>0.05 = 5%</strong>, <strong>0.01 = 1%</strong>)
+                                </small>
                             </div>
                         </div>
 
