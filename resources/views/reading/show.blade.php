@@ -203,12 +203,10 @@
                                     <div>- ({{$data['current_bill']['advances']}})</div>
                                 </div>
                             @endif
-                            @if($franchiseTax > 0)
                                 <div style="display: flex; justify-content: space-between;">
                                     <div style="text-transform: uppercase">Franchise Tax</div>
                                     <div style="text-transform: uppercase">+ ({{number_format($franchiseTax, 2)}})</div>
                                 </div>
-                            @endif
                             <div style="display: flex; justify-content: space-between;">
                                 <div style="text-transform: uppercase;">Arrears:</div>
                                 <div style="text-transform: uppercase;">{{$arrears}}</div>
