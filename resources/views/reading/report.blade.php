@@ -109,7 +109,7 @@
                                 <td>{{ \Carbon\Carbon::parse($row->created_at)->format('F d, Y') }}</td>
                                 <td>
                                     <div class="d-flex align-items-center gap-2">
-                                        <a href="{{ $row->bill ? route('reading.invoice', $row->bill->reference_no) : '#' }}"
+                                        <a href="{{ $row->bill ? route('reading.show', $row->bill->reference_no) : '#' }}"
                                         class="btn btn-primary text-white text-uppercase fw-bold"
                                         id="show-btn" data-id="{{ $row->id }}"
                                         {{ $row->bill ? '' : 'disabled' }}>
