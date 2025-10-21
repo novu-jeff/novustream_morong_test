@@ -737,8 +737,9 @@ $propertyTypeId = DB::table('property_types')
     }
 
         $bill->update([
-            'discount' => $totalDiscount,
-            'amount_after_due' => $bill->amount + $penaltyAmount,
+        'discount' => $totalDiscount,
+        'amount_after_due' => $bill->amount + $penaltyAmount,
+        'tax' => $franchiseAmount ?? 0,
         ]);
 
         // Generate payment QR
