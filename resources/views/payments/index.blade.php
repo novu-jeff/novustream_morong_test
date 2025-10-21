@@ -17,65 +17,91 @@
                 </div>
             </div>
             <div class="inner-content mt-5 pb-5 mb-5">
-                <div class="row mb-4">
-                    <div class="col-12 col-md-1">
-                        <label class="mb-1">Show Entries</label>
-                        <select name="entries" id="entries" class="form-select text-uppercase dropdown-toggle">
-                            @foreach([10, 25, 50, 100, 200, 250, 350, 400, 450, 500] as $entry)
-                                <option value="{{ $entry }}" {{ $entries == $entry ? 'selected' : '' }}>
-                                    {{ $entry }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="col-12 col-md-2 mb-3">
-                        <label class="mb-1">Filter</label>
-                        <select name="filter" id="filter" class="form-select text-uppercase dropdown-toggle">
-                            <option value="unpaid" {{$filter == 'unpaid' ? 'selected' : ''}}>UnPaid</option>
-                            <option value="paid" {{$filter == 'paid' ? 'selected' : ''}}>Paid</option>
-                        </select>
-                    </div>
-                    <div class="col-12 col-md-3 mb-3">
-                        <label class="mb-1">Zone</label>
-                        <select name="zone_no" id="zone_no" class="form-select text-uppercase dropdown-toggle">
-                            <option value="all">All Zones</option>
-                            @forelse($zones as $targetedZone)
-                                <option value="{{$targetedZone->zone}}" {{$targetedZone->zone == $zone ? 'selected' : ''}}> {{$targetedZone->zone . ' - ' . $targetedZone->area}} </option>
-                            @empty
-                                <option value="">No Zones Available</option>
-                            @endforelse
-                        </select>
-                    </div>
-                    <div class="col-12 col-md-3 mb-3">
-                        <label class="mb-1">Reading Month</label>
-                        <input type="month" name="month" id="date" class="form-control" value="{{$date}}">
-                    </div>
-                    <div class="col-12 col-md-3">
-                        <label class="mb-1">Search <span class="text-muted ms-1">[account no]</span></label>
-                        <div class="position-relative">
-                            <input
-                                type="text"
-                                name="search"
-                                id="search"
-                                class="form-control pe-5"
-                                value="{{ $toSearch }}"
-                                placeholder=""
-                            >
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex flex-wrap align-items-end gap-3">
+            <div>
+                <label class="mb-1">Show Entries</label>
+                <select name="entries" id="entries" class="form-select text-uppercase dropdown-toggle w-auto">
+                    @foreach([10, 25, 50, 100, 200, 250, 350, 400, 450, 500] as $entry)
+                        <option value="{{ $entry }}" {{ $entries == $entry ? 'selected' : '' }}>
+                            {{ $entry }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
 
-                            @if(!empty($toSearch))
-                                <button
-                                    type="button"
-                                    id="clear-search"
-                                    class="btn position-absolute top-50 end-0 translate-middle-y me-2 p-0 text-muted"
-                                    style="border: none; background: none; font-size: 1.2rem;"
-                                    aria-label="Clear search"
-                                >
-                                    &times;
-                                </button>
-                            @endif
-                        </div>
-                    </div>
+            <div>
+                <label class="mb-1">Filter</label>
+                <select name="filter" id="filter" class="form-select text-uppercase dropdown-toggle w-auto">
+                    <option value="unpaid" {{$filter == 'unpaid' ? 'selected' : ''}}>UnPaid</option>
+                    <option value="paid" {{$filter == 'paid' ? 'selected' : ''}}>Paid</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="mb-1">Zone</label>
+                <select name="zone_no" id="zone_no" class="form-select text-uppercase dropdown-toggle" style="width: 13rem;">
+                    <option value="all">All Zones</option>
+                    @forelse($zones as $targetedZone)
+                        <option value="{{$targetedZone->zone}}" {{$targetedZone->zone == $zone ? 'selected' : ''}}>
+                            {{$targetedZone->zone . ' - ' . $targetedZone->area}}
+                        </option>
+                    @empty
+                        <option value="">No Zones Available</option>
+                    @endforelse
+                </select>
+            </div>
+
+            <div>
+                <label class="mb-1">Reading Month</label>
+                <input type="month" name="month" id="date" class="form-control w-auto" value="{{$date}}">
+            </div>
+
+            <div>
+                <label class="mb-1">Search <span class="text-muted ms-1">[account no]</span></label>
+                <div class="position-relative">
+                    <input
+                        type="text"
+                        name="search"
+                        id="search"
+                        class="form-control pe-5 w-auto"
+                        value="{{ $toSearch }}"
+                    >
+                    @if(!empty($toSearch))
+                        <button
+                            type="button"
+                            id="clear-search"
+                            class="btn position-absolute top-50 end-0 translate-middle-y me-2 p-0 text-muted"
+                            style="border: none; background: none; font-size: 1.2rem;"
+                            aria-label="Clear search"
+                        >
+                            &times;
+                        </button>
+                    @endif
                 </div>
+            </div>
+
+            {{-- 🔽 New section: Download summary --}}
+            <div>
+                <label class="form-label mb-1">Print</label>
+                <select name="print" id="print" class="form-select text-uppercase" style="width: 15rem;">
+                    <option hidden>Select to Print</option>
+                    <option value="daily">Daily Summary Report</option>
+                    <option value="monthly">Monthly Summary Report</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="form-label mb-1 d-block">&nbsp;</label>
+                <button id="download-summary" class="btn btn-primary px-3">
+                    <i class="bx bx-download"></i> Download
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
                 <div class="table-responsive">
                     <table class="table table-bordered table-striped w-100 mt-4">
                         <thead>
@@ -130,7 +156,7 @@
                                                     <i class="bx bx-credit-card-alt"></i>
                                                 </a>
                                             @else
-                                                <a target="_blank" href="{{ route('reading.show', $row->reference_no) }}"
+                                                <a target="_blank" href="{{ route('reading.orshow', $row->reference_no) }}"
                                                 class="btn btn-primary text-white text-uppercase fw-bold"
                                                 id="show-btn" data-id="{{ $row->id }}">
                                                     <i class="bx bx-receipt"></i>
@@ -179,6 +205,20 @@
             $('#search').val('');
             updateUrl();
         });
+
+        $('#download-summary').on('click', function() {
+        const type = $('#print').val();
+        const date = $('#date').val();
+        const zone = $('#zone_no').val() === 'all' ? '' : $('#zone_no').val();
+
+        if (!type) {
+            alert('Please select summary type');
+            return;
+        }
+
+        const url = `/admin/reports/download?type=${type}&date=${date}&zone=${zone}`;
+        window.location.href = url;
+    });
     });
 </script>
 @endsection

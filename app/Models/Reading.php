@@ -39,5 +39,8 @@ class Reading extends Model
         return $this->belongsTo(SCDiscount::class);
     }
 
+    public function propertyType() {
+        return $this->belongsTo(PropertyTypes::class, 'property_type_id');
+    }
 
 }

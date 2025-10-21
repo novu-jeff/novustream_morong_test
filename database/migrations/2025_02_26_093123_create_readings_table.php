@@ -44,6 +44,8 @@ return new class extends Migration
                 ->default(0);
             $table->string('discount')
                 ->default(0);
+            $table->string('tax')
+                ->default(0);
             $table->string('penalty')
                 ->default(0);
             $table->string('amount');
@@ -71,10 +73,15 @@ return new class extends Migration
                 ->nullable();
             $table->string('paid_by_reference_no')
                 ->nullable();
+            $table->foreignId('cashier_id')
+                ->nullable()
+                ->constrained('admins')
+                ->onDelete('set null');
             $table->boolean('isChangeForAdvancePayment')
                 ->default(false);
             $table->boolean('isHighConsumption')
                 ->default(false);
+            $table->text('high_consumption_note')->nullable();
             $table->enum('payment_method', ['cash', 'online'])
                 ->nullable();
             $table->timestamps();

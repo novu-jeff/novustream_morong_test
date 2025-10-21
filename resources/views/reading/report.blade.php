@@ -25,10 +25,10 @@
                 <h1>All Meter Readings</h1>
             </div>
             <div class="inner-content mt-5 pb-5 mb-5">
-                <div class="row mb-4">
-                    <div class="col-12 col-md-1">
-                        <label class="mb-1">Show Entries</label>
-                        <select name="entries" id="entries" class="form-select text-uppercase dropdown-toggle">
+                <div class="row align-items-end gy-2 gx-3 mb-4">
+                    <div class="col-auto">
+                        <label class="form-label mb-1">Show Entries</label>
+                        <select name="entries" id="entries" class="form-select text-uppercase">
                             @foreach([10, 25, 50, 100, 200, 250, 350, 400, 450, 500] as $entry)
                                 <option value="{{ $entry }}" {{ $entries == $entry ? 'selected' : '' }}>
                                     {{ $entry }}
@@ -36,11 +36,11 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-12 col-md-4 mb-3">
-                        <label class="mb-1">Zone</label>
-                        <select name="zone_no" id="zone_no" class="form-select text-uppercase dropdown-toggle">
-                            <option value="all" {{ $zone === 'all' ? 'selected' : '' }}>All Zones</option>
 
+                    <div class="col-auto">
+                        <label class="form-label mb-1">Zone</label>
+                        <select name="zone_no" id="zone_no" class="form-select text-uppercase">
+                            <option value="all" {{ $zone === 'all' ? 'selected' : '' }}>All Zones</option>
                             @foreach($zones as $targetedZone)
                                 <option value="{{ $targetedZone->zone }}" {{ $zone === $targetedZone->zone ? 'selected' : '' }}>
                                     {{ $targetedZone->zone }} - {{ $targetedZone->area ?? '' }}
@@ -48,22 +48,16 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-12 col-md-3 mb-3">
-                        <label class="mb-1">Reading Month</label>
+
+                    <div class="col-auto">
+                        <label class="form-label mb-1">Reading Month</label>
                         <input type="month" name="month" id="date" class="form-control" value="{{$date}}">
                     </div>
-                    <div class="col-12 col-md-4">
-                        <label class="mb-1">Search <span class="text-muted ms-1">[name | account no]</span></label>
-                        <div class="position-relative">
-                            <input
-                                type="text"
-                                name="search"
-                                id="search"
-                                class="form-control pe-5"
-                                value="{{ $toSearch }}"
-                                placeholder=""
-                            >
 
+                    <div class="col-auto">
+                        <label class="form-label mb-1">Search <span class="text-muted ms-1">[name | account no]</span></label>
+                        <div class="position-relative">
+                            <input type="text" name="search" id="search" class="form-control pe-5" value="{{ $toSearch }}">
                             @if(!empty($toSearch))
                                 <button
                                     type="button"
@@ -71,11 +65,23 @@
                                     class="btn position-absolute top-50 end-0 translate-middle-y me-2 p-0 text-muted"
                                     style="border: none; background: none; font-size: 1.2rem;"
                                     aria-label="Clear search"
-                                >
-                                    &times;
-                                </button>
+                                >&times;</button>
                             @endif
                         </div>
+                    </div>
+
+                    <div class="col-auto">
+                        <label class="form-label mb-1">Print</label>
+                        <select name="print" id="print" class="form-select text-uppercase">
+                            <option hidden>Select to Print</option>
+                            <option>Billing Summary</option>
+                            <option>Penalty Summary Report</option>
+                        </select>
+                    </div>
+
+                    <div class="col-auto">
+                        <label class="form-label mb-1 d-block">&nbsp;</label>
+                        <button class="btn btn-primary px-3">Download</button>
                     </div>
                 </div>
                 <table class="w-100 table table-bordered table-hover mt-4">
@@ -103,7 +109,7 @@
                                 <td>{{ \Carbon\Carbon::parse($row->created_at)->format('F d, Y') }}</td>
                                 <td>
                                     <div class="d-flex align-items-center gap-2">
-                                        <a href="{{ $row->bill ? route('reading.show', $row->bill->reference_no) : '#' }}"
+                                        <a href="{{ $row->bill ? route('reading.invoice', $row->bill->reference_no) : '#' }}"
                                         class="btn btn-primary text-white text-uppercase fw-bold"
                                         id="show-btn" data-id="{{ $row->id }}"
                                         {{ $row->bill ? '' : 'disabled' }}>
@@ -167,7 +173,7 @@
                 rows.forEach(row => {
                 const referenceNo = row.bill?.reference_no ?? null;
                 const link = referenceNo
-                    ? `{{ route('reading.show', ':reference_no') }}`.replace(':reference_no', referenceNo)
+                    ? `{{ route('reading.invoice', ':reference_no') }}`.replace(':reference_no', referenceNo)
                     : '#';
                 const disabled = referenceNo ? '' : 'disabled';
 

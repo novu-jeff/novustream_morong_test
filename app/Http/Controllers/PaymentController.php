@@ -299,6 +299,7 @@ class PaymentController extends Controller
         // 🧮 Use dynamic penalty computation (from PaymentBreakdownPenalty)
         $amount = (float)($currentBill['amount'] ?? 0);
         $discount = (float)($currentBill['discount'] ?? 0);
+        $tax = (float) ($currentBill['tax'] ?? 0);
         $currentDay = now()->day;
 
         $penaltyEntry = \App\Models\PaymentBreakdownPenalty::where('due_from', '<=', $currentDay)
@@ -319,11 +320,11 @@ class PaymentController extends Controller
                 $assumedPenalty = floatval($penaltyEntry->amount);
             }
         } else {
-            // fallback 15%
-            $assumedPenalty = $amount * 0.15;
+            // fallback 10%
+            $assumedPenalty = $amount * 0.10;
         }
 
-        $assumedAmountAfterDue = $amount + $assumedPenalty + $previousUnpaid;
+        $assumedAmountAfterDue = $amount + $assumedPenalty + $previousUnpaid + $tax;
 
         $data['current_bill']['assumed_penalty'] = $assumedPenalty;
         $data['current_bill']['assumed_amount_after_due'] = $assumedAmountAfterDue;
@@ -366,12 +367,11 @@ class PaymentController extends Controller
 
     private function calculateTotalDue(array $currentBillData, ?array $payload = null, float $fullArrears = 0): array
     {
+
         $currentBill = (float) ($currentBillData['total'] ?? 0);
         $arrears = $fullArrears ?: (float) ($currentBillData['previous_unpaid'] ?? 0);
         $prevPenalty = (float) ($currentBillData['penalty'] ?? 0);
-        $advancePayment = (float) ($currentBillData['advances'] ?? 0);
 
-        // 🧾 Determine discount
         $discount = 0;
         if (isset($payload['discount'])) {
             $discount = (float) $payload['discount'];
@@ -383,33 +383,10 @@ class PaymentController extends Controller
             }
         }
 
-        // 🧮 Compute assumed penalty (dynamic rule or fallback 15%)
-        $assumedPenalty = 0;
-        $amount = (float) ($currentBillData['amount'] ?? $currentBill);
-        $previousUnpaid = (float) ($currentBillData['previous_unpaid'] ?? 0);
-
-        $currentDay = now()->day;
-        $penaltyEntry = \App\Models\PaymentBreakdownPenalty::where('due_from', '<=', $currentDay)
-            ->where('due_to', '>=', $currentDay)
-            ->first();
-
-        if ($penaltyEntry) {
-            $penaltyBase = $amount - $discount;
-            if ($penaltyEntry->amount_type === 'percentage') {
-                $assumedPenalty = $penaltyBase * floatval($penaltyEntry->amount);
-            } elseif ($penaltyEntry->amount_type === 'fixed') {
-                $assumedPenalty = floatval($penaltyEntry->amount);
-            }
-        } else {
-            // fallback 15% rule
-            $assumedPenalty = $amount * 0.15;
-        }
-
-        $assumedAmountAfterDue = $amount + $assumedPenalty + $previousUnpaid;
-
-        // 🗓️ Check if due-date penalty applies (past due)
+        $advancePayment = (float) ($currentBillData['advances'] ?? 0);
         $dueDatePenalty = 0;
         $dueDate = $currentBillData['due_date'] ?? null;
+        $tax = (float) ($currentBillData['tax'] ?? 0);
 
         if ($dueDate) {
             $dueDateCarbon = \Carbon\Carbon::parse($dueDate)->timezone('Asia/Manila')->startOfDay();
@@ -418,7 +395,7 @@ class PaymentController extends Controller
             if ($today->gt($dueDateCarbon)) {
                 $daysOverdue = $dueDateCarbon->diffInDays($today);
 
-                $penaltyRule = \App\Models\PaymentBreakdownPenalty::where('due_from', '<=', $daysOverdue)
+                $penaltyRule = PaymentBreakdownPenalty::where('due_from', '<=', $daysOverdue)
                     ->where('due_to', '>=', $daysOverdue)
                     ->first();
 
@@ -432,29 +409,26 @@ class PaymentController extends Controller
             }
         }
 
-        // 💰 Compute total due
-        $totalDue = $arrears + ($currentBill - $discount) + $assumedPenalty + $dueDatePenalty - $advancePayment;
+        $totalDue = $arrears + ($currentBill - $discount) + $dueDatePenalty - $advancePayment + $tax;
         $totalDue = max(0, round($totalDue, 2));
 
-        // ✅ Return clean structured result
         return [
             'total_due' => $totalDue,
-            'assumed_penalty' => round($assumedPenalty, 2),
-            'assumed_amount_after_due' => round($assumedAmountAfterDue, 2),
             'breakdown' => [
                 'current_bill' => $currentBill,
                 'arrears' => $arrears,
-                'previous_penalty' => $prevPenalty,
+                //'previous_penalty' => $prevPenalty, // optional
                 'discount' => $discount,
                 'advance_payment' => $advancePayment,
                 'due_date_penalty' => $dueDatePenalty,
+                'tax' => $tax,
             ],
         ];
     }
 
 
 
-    private function getBill(string $reference_no, $payload = null, bool $strictAmount = false)
+        private function getBill(string $reference_no, $payload = null, bool $strictAmount = false)
     {
         $data = $this->meterService::getBill($reference_no);
 
@@ -462,13 +436,37 @@ class PaymentController extends Controller
             return ['error' => 'Bill not found'];
         }
 
-        $total = (float) $data['current_bill']['amount'] + (float) $data['current_bill']['penalty'];
+        $readingId = $data['current_bill']['reading_id'] ?? null;
 
-        if($strictAmount) {
+        if (!$readingId) {
+            return ['error' => 'No reading found for this bill.'];
+        }
+
+        $reading = \App\Models\Reading::find($readingId);
+        if (!$reading) {
+            return ['error' => 'Reading not found.'];
+        }
+
+        $accountNo = $reading->account_no;
+
+        $unpaidBills = Bill::whereHas('reading', function($query) use ($accountNo) {
+            $query->where('account_no', $accountNo);
+        })
+        ->where('isPaid', 0)
+        ->orderBy('bill_period_from')
+        ->get();
+
+        $fullArrears = $unpaidBills->sum(fn($b) => $b->previous_unpaid);
+
+        $totalDueResult = $this->calculateTotalDue($data['current_bill'], $payload);
+        $totalDue = $totalDueResult['total_due'];
+        $breakdown = $totalDueResult['breakdown'];
+
+        if ($strictAmount && $payload) {
             $validator = Validator::make($payload, [
-                'payment_amount' => 'required|gte:' . $total
+                'payment_amount' => 'required|numeric|gte:' . $totalDue,
             ], [
-                'payment_amount.gte' => 'Cash payment is insufficient'
+                'payment_amount.gte' => 'Cash payment is insufficient. Total due is PHP ' . number_format($totalDue, 2)
             ]);
 
             if ($validator->fails()) {
@@ -476,7 +474,15 @@ class PaymentController extends Controller
             }
         }
 
-        return ['data' => $data];
+        $data['current_bill']['assumed_amount_after_due'] = $totalDue;
+        $data['current_bill']['breakdown'] = $breakdown;
+        $data['current_bill']['previous_unpaid'] = $fullArrears;
+
+        return [
+            'data' => $data,
+            'total_due' => $totalDue,
+            'breakdown' => $breakdown,
+        ];
     }
 
     public function processCashPayment(string $reference_no, array $payload) {
@@ -494,7 +500,12 @@ class PaymentController extends Controller
         $now = Carbon::now()->format('Y-m-d H:i:s');
 
         $amount = (float) $data['current_bill']['amount'] + (float) $data['current_bill']['penalty'];
+        $totalDueResult = $this->calculateTotalDue($data['current_bill'], $payload);
+        $amount = $totalDueResult['total_due'];
+
         $change = (float) $payload['payment_amount'] - $amount;
+        $change = max(0, $change);
+
         $forAdvancePayment = isset($payload['for_advances']) && $payload['for_advances'];
 
         $saveChange = ($change != 0 && $forAdvancePayment);
@@ -502,6 +513,7 @@ class PaymentController extends Controller
         $currentBill = Bill::find($data['current_bill']['id']);
 
         if ($currentBill) {
+            $client = \App\Models\UserAccounts::where('account_no', $data['client']['account_no'] ?? null)->first();
             $currentBill->update([
                 'isPaid' => true,
                 'amount_paid' => $payload['payment_amount'],
@@ -510,6 +522,8 @@ class PaymentController extends Controller
                 'date_paid' => $now,
                 'isChangeForAdvancePayment' => $saveChange,
                 'payment_method' => 'cash',
+                'client_id' => $client?->id, // ✅ attach client_id
+                'cashier_id' => auth()->id(),
             ]);
         }
 
@@ -524,6 +538,8 @@ class PaymentController extends Controller
                         'amount_paid' => $payload['payment_amount'],
                         'change' => $change,
                         'paid_by_reference_no' => $reference_no,
+                        'client_id' => $client?->id,
+                        'cashier_id' => auth()->id(),
                     ]);
                 }
             }

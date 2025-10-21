@@ -9,8 +9,8 @@ use Laravel\Sanctum\HasApiTokens;
 class Admin extends Authenticatable
 {
     use HasApiTokens, Notifiable;
-    
-    protected $guard = 'admins'; 
+
+    protected $guard = 'admins';
 
     protected $fillable = [
         'name',
@@ -20,9 +20,15 @@ class Admin extends Authenticatable
         'password',
         'token',
     ];
-    
+
     protected $hidden = [
         'password',
         'remember_token',
     ];
+
+    public function processedBills()
+    {
+        return $this->hasMany(Bill::class, 'cashier_id');
+    }
+
 }

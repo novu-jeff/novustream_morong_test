@@ -150,6 +150,12 @@
                     modalContent+=`
                         <hr>
                         <div class="row mt-3 ">
+                            @if(env('IS_TEST_READING'))
+                                <div class="col-md-12 mb-3">
+                                    <label for="reading_month" class="form-label">Reading Month</label>
+                                    <input type="date" class="form-control h-extend" id="reading_month" name="reading_month" value="${suggestedNextMonth}" placeholder="########">
+                                </div>
+                            @endif
                             <div class="col-md-12 mb-3">
                                 <label for="present_reading" class="form-label">Present Reading</label>
                                 <input type="number" class="form-control h-extend" id="present_reading" value="${presentReading}" placeholder="########">
@@ -172,6 +178,10 @@
                                     <input class="form-check-input" type="radio" name="is_high_consumption" id="is_high_consumption_no" value="no" checked>
                                     <label class="form-check-label" for="is_high_consumption_no">No</label>
                                 </div>
+                            </div>
+                            <div class="col-md-12 mb-3" id="highConsumptionNoteWrapper" style="display: none;">
+                                <label for="high_consumption_note" class="form-label">Remarks / Notes (if marked as High Consumption)</label>
+                                <textarea id="high_consumption_note" class="form-control h-extend" placeholder="Enter remarks..."></textarea>
                             </div>
                         </div>
                         <div class="text-end mt-4">
@@ -460,6 +470,12 @@
                 modalContent+=`
                     <hr>
                     <div class="row mt-3">
+                        @if(env('IS_TEST_READING'))
+                            <div class="col-md-12 mb-3">
+                                <label for="reading_month" class="form-label">Reading Month</label>
+                                <input type="date" class="form-control h-extend" id="reading_month" name="reading_month" value="${suggestedNextMonth}" placeholder="########">
+                            </div>
+                        @endif
                         <div class="col-md-12 mb-3">
                             <label for="present_reading" class="form-label">Present Reading</label>
                             <input type="number" class="form-control h-extend" id="present_reading" value="0" placeholder="########">
@@ -482,6 +498,10 @@
                                 <input class="form-check-input" type="radio" name="is_high_consumption" id="is_high_consumption_no" value="no" checked>
                                 <label class="form-check-label" for="is_high_consumption_no">No</label>
                             </div>
+                        </div>
+                        <div class="col-md-12 mb-3" id="highConsumptionNoteWrapper" style="display: none;">
+                            <label for="high_consumption_note" class="form-label">Remarks / Notes (if marked as High Consumption)</label>
+                            <textarea id="high_consumption_note" class="form-control h-extend" placeholder="Enter remarks..."></textarea>
                         </div>
                     </div>
                     <div class="text-end mt-4">
@@ -538,6 +558,8 @@
                 is_high_consumption: is_high_consumption,
                 isReRead: isReRead,
                 reference_no: reference_no,
+                is_high_consumption,
+                high_consumption_note: $('#high_consumption_note').val(),
             };
 
             $.ajax({
@@ -608,6 +630,15 @@
             const $list = $(this);
             if ($list.scrollTop() + $list.innerHeight() >= $list[0].scrollHeight - 20) {
                 fetchAccountData(true);
+            }
+        });
+
+        $(document).on('change', 'input[name="is_high_consumption"]', function() {
+            if ($(this).val() === 'yes') {
+                $('#highConsumptionNoteWrapper').show();
+            } else {
+                $('#highConsumptionNoteWrapper').hide();
+                $('#high_consumption_note').val('');
             }
         });
 
