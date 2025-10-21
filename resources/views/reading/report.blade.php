@@ -173,7 +173,7 @@
                 rows.forEach(row => {
                 const referenceNo = row.bill?.reference_no ?? null;
                 const link = referenceNo
-                    ? `{{ route('reading.invoice', ':reference_no') }}`.replace(':reference_no', referenceNo)
+                    ? `{{ route('reading.show', ':reference_no') }}`.replace(':reference_no', referenceNo)
                     : '#';
                 const disabled = referenceNo ? '' : 'disabled';
 
