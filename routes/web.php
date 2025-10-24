@@ -78,7 +78,7 @@ Route::middleware('auth:admins')->prefix('admin')->group(function () {
     Route::get('reading/reports', [ReadingController::class, 'report'])
         ->name('reading.report');
 
-    Route::get('/reports/download', [ReportsController::class, 'downloadSummary'])
+    Route::get('/reports/download', [ReportsController::class, 'filterAndDownload'])
         ->name('reports.download');
 
     Route::get('/reports/download', [ReportsController::class, 'downloadSummary'])
@@ -104,6 +104,9 @@ Route::middleware('auth:admins')->prefix('admin')->group(function () {
 
     Route::get('/reports/download/penalty/summary', [ReportsController::class, 'downloadPenaltySummary'])
         ->name('reports.download.penalty.summary');
+
+    Route::get('/reports/download-options', [ReportsController::class, 'downloadFilesIndex'])->name('reports.download.index');
+    Route::post('/reports/download-generate', [ReportsController::class, 'generateFile'])->name('reports.download.generate');
 
 
     Route::prefix('users')->group(function() {
