@@ -46,11 +46,9 @@ Route::get('/login', [LoginController::class, 'index']);
 Route::any('/logout', [LoginController::class, 'logout'])
     ->name('auth.logout');
 
-// Show register page
 Route::get('/register', [RegisterController::class, 'showRegistrationForm'])
     ->name('register');
 
-// Handle register form
 Route::post('/register', [RegisterController::class, 'register'])
     ->name('auth.register.store');
 
@@ -83,15 +81,12 @@ Route::middleware('auth:admins')->prefix('admin')->group(function () {
     Route::get('/reports/download', [ReportsController::class, 'downloadSummary'])
         ->name('reports.download');
 
-    // EXISTING SUMMARY DOWNLOAD ROUTE
     Route::get('/reports/download', [ReportsController::class, 'downloadSummary'])
         ->name('reports.download');
 
-    // >>> THIS IS THE MISSING ROUTE <<<
     Route::get('/reports/downloadable-files', [ReportsController::class, 'downloadFilesIndex'])
         ->name('reports.download-index');
 
-    // NEW DOWNLOAD ROUTES FOR OTHER REPORTS
     Route::get('/reports/download/ageing/detailed', [ReportsController::class, 'downloadAgeingDetailed'])
         ->name('reports.download.ageing.detailed');
 
