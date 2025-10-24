@@ -81,7 +81,7 @@ Route::middleware('auth:admins')->prefix('admin')->group(function () {
         ->name('reading.report');
 
     Route::get('/reports/download', [ReportsController::class, 'downloadSummary'])
-    ->name('reports.download');
+        ->name('reports.download');
 
     Route::prefix('users')->group(function() {
 

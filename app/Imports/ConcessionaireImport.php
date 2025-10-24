@@ -14,6 +14,7 @@ use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
+use Maatwebsite\Excel\Concerns\WithCalculatedFormulas; // ✅ added to evaluate Excel formulas
 
 class ConcessionaireImport implements
     ToModel,
@@ -21,20 +22,23 @@ class ConcessionaireImport implements
     WithValidation,
     SkipsEmptyRows,
     SkipsOnFailure,
-    WithChunkReading
+    WithChunkReading,
+    WithCalculatedFormulas // ✅ evaluates Excel formulas before reading
 {
     use SkipsFailures;
 
     protected $skippedRows = [];
     protected $rowCounter = 3;
 
+    /**
+     * Validation rules
+     */
     public function rules(): array
     {
         return [
             'account_no' => [
                 'required',
                 function ($attribute, $value, $fail) {
-                    // sanitize first to ensure consistency
                     $accountNo = $this->sanitizeAccountNo($value);
                     if (
                         $accountNo &&
@@ -45,9 +49,13 @@ class ConcessionaireImport implements
                 }
             ],
             'name' => ['required'],
+            'zone' => ['required'], // ✅ Ensure zone is present in the Excel column
         ];
     }
 
+    /**
+     * Custom validation messages
+     */
     public function customValidationMessages(): array
     {
         return [
@@ -56,16 +64,19 @@ class ConcessionaireImport implements
         ];
     }
 
+    /**
+     * Handle each imported row
+     */
     public function model(array $row)
     {
         $rowNum = $this->rowCounter++;
         $row = array_map('trim', $row);
 
         try {
-            // sanitize account number and extract zone
             $accountNo = $this->sanitizeAccountNo($row['account_no'] ?? null);
-            $zone      = $this->extractZone($accountNo);
+            $zone      = $row['zone'] ?? null; // ✅ use the evaluated value from Excel zone column
 
+            // Create user record
             $user = User::create([
                 'name'       => $row['name'],
                 'contact_no' => $row['contact_no'] ?? null,
@@ -75,10 +86,11 @@ class ConcessionaireImport implements
                 $property_type  = $this->getPropertyType($row['rate_code']);
                 $date_connected = $this->parseDate($row['date_connected'] ?? null);
 
+                // Create linked user account
                 UserAccounts::create([
                     'user_id'         => $user->id,
-                    'zone'            => $zone, // ✅ use extracted zone
-                    'account_no'      => $row['account_no'] ?? null,
+                    'zone'            => $zone, // ✅ direct from Excel
+                    'account_no'      => $accountNo,
                     'address'         => $row['address'] ?? null,
                     'property_type'   => $property_type,
                     'rate_code'       => $row['rate_code'] ?? null,
@@ -102,49 +114,24 @@ class ConcessionaireImport implements
         }
     }
 
-    public function validateRow(array $row, $index)
-    {
-        if ($this->isRowEmpty($row)) {
-            return true;
-        }
-        return null;
-    }
-
+    /**
+     * Sanitize Account No (ignore formulas or invalid strings)
+     */
     protected function sanitizeAccountNo(?string $accountNo): ?string
     {
-        if (!$accountNo) {
-            return null;
-        }
+        if (!$accountNo) return null;
 
         $accountNo = trim($accountNo);
-
-        // If PhpSpreadsheet gave us a formula string, ignore it
-        if (str_starts_with($accountNo, '=')) {
-            return null;
-        }
-
+        if (str_starts_with($accountNo, '=')) return null; // skip Excel formula strings
         return $accountNo;
     }
 
-    protected function extractZone(?string $accountNo): ?string
-    {
-        if (!$accountNo) {
-            return null;
-        }
-
-        // Always take first 3 digits if present
-        if (preg_match('/^\d{3}/', $accountNo, $matches)) {
-            return $matches[0];
-        }
-
-        return null;
-    }
-
+    /**
+     * Parse Excel date
+     */
     protected function parseDate($value): ?string
     {
-        if (!$value) {
-            return null;
-        }
+        if (!$value) return null;
 
         if (is_numeric($value)) {
             return Carbon::instance(
@@ -158,6 +145,9 @@ class ConcessionaireImport implements
             : null;
     }
 
+    /**
+     * Property type mapping (keep your full version)
+     */
     public function getPropertyType($rate_code)
     {
         $types = [
@@ -223,32 +213,12 @@ class ConcessionaireImport implements
             60 => 'Bulk/Wholesale 10"',
         ];
 
-        // $types = [
-        //     "ZONE 1"	=> "POBLACION",
-        //     "ZONE 2"	=> "POBLACION",
-        //     "ZONE 3 BOOK 1" =>	"BARITAN",
-        //     'ZONE 3 BOOK 2'	=> "BARITAN",
-        //     "ZONE 4 BOOK 1" =>	"BARITAN",
-        //     "ZONE 4 BOOK 2" =>	"BARITAN",
-        //     "ZONE 5" =>	"BARITAN",
-        //     "ZONE 6" =>	"POBLACION",
-        //     "ZONE 7 BOOK 1" =>	"HILLTOP SABANG",
-        //     "ZONE 7 BOOK 2" =>	"IBAYO SABANG",
-        //     "ZONE 8" =>	"PANIBATUHAN POBLACION",
-        //     "ZONE 9" =>	"CROSSING NAGBALAYONG",
-        //     "ZONE 10" =>	"NAGBALAYONG",
-        //     "ZONE 11 BOOK 1" =>	"SABANG PROPER",
-        //     "ZONE 11 BOOK 2" =>	"RELOCATION, BACKDOOR SABANG",
-        //     "ZONE 11 BOOK 3" =>	"PAG-ASA SABANG",
-        //     "ZONE 11 BOOK 4" =>	"NAGWAWA SABANG",
-        //     "ZONE 12 BOOK 1" =>	"MABAYO PROPER",
-        //     "ZONE 12 BOOK 2" =>	"LAPLAP MABAYO",
-        //     "ZONE 13" =>	"MINANGA MABAYO",
-        // ];
-
         return $types[(int) $rate_code] ?? null;
     }
 
+    /**
+     * Other configurations
+     */
     public function headingRow(): int
     {
         return 2;

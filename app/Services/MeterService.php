@@ -75,17 +75,14 @@ class MeterService {
     public function filterAccount(array $filter) {
         $query = UserAccounts::with('user');
 
+        // Zone filter updated to use the 'zone' column instead of account_no
         if (!empty($filter['zones']) && is_array($filter['zones'])) {
-            $query->where(function ($q) use ($filter) {
-                foreach ($filter['zones'] as $zone) {
-                    $q->orWhere('account_no', 'like', $zone . '%');
-                }
-            });
-        }
-        elseif (!empty($filter['zone']) && strtolower($filter['zone']) !== 'all') {
-            $query->where('account_no', 'like', $filter['zone'] . '%');
+            $query->whereIn('zone', $filter['zones']);
+        } elseif (!empty($filter['zone']) && strtolower($filter['zone']) !== 'all') {
+            $query->where('zone', $filter['zone']);
         }
 
+        // Search filter remains the same
         if (!empty($filter['search_by'])) {
             switch ($filter['search_by']) {
                 case 'all':
@@ -143,6 +140,7 @@ class MeterService {
             'data' => $data
         ];
     }
+
 
 
     public function getPreviousReading($account_no) {

@@ -197,7 +197,7 @@ class ReadingController extends Controller
             }
         } else {
             // fallback penalty if no match
-            $assumed_penalty = $amount * 0.15;
+            $assumed_penalty = $amount * 0.20;
         }
 
         $assumed_amount_after_due = $amount + $assumed_penalty;
@@ -462,13 +462,24 @@ class ReadingController extends Controller
             ->groupBy('concessioner_accounts.zone')
             ->pluck('read_count', 'zone');
 
-        $zoneAreas = DB::table('zones')->pluck('area', 'zone');
+        $zoneAreas = DB::table('concessioner_accounts')
+            ->leftJoin('zones', function ($join) {
+                $join->on(DB::raw("REPLACE(UPPER(zones.zone), ',', '')"), '=', DB::raw("REPLACE(UPPER(concessioner_accounts.zone), ',', '')"));
+            })
+            ->select('concessioner_accounts.zone', 'zones.area')
+            ->distinct()
+            ->pluck('area', 'zone');
 
         $zones = $zonesRaw->map(function ($zone) use ($readingsPerZone, $zoneAreas) {
             $zone->read_count = $readingsPerZone[$zone->zone] ?? 0;
             $zone->area = $zoneAreas[$zone->zone] ?? 'Unknown';
             return $zone;
-        })->sortBy('zone')->values();
+        })->sortBy(function ($zone) {
+            // Extract the number from the zone string
+            preg_match('/\d+/', $zone->zone, $matches);
+            return isset($matches[0]) ? (int) $matches[0] : 0;
+        })->values();
+
 
         $collection = collect($this->meterService::getReport($zone, $date, $toSearch))->flatten(2);
 
