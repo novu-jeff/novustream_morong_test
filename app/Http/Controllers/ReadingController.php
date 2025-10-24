@@ -63,62 +63,76 @@ class ReadingController extends Controller
         $this->isTesting = env('IS_TEST_READING');
     }
 
-    public function index(Request $request) {
-    if ($request->ajax()) {
-        $payload = $request->all();
+    public function index(Request $request)
+    {
+        if ($request->ajax()) {
+            $payload = $request->all();
+            $user = auth()->user();
 
-        $user = auth()->user();
-        if ($user->user_type === 'technician') {
-            // zone_assigned = "2,3,5"
-            $assignedZoneIds = explode(',', $user->zone_assigned);
+            if ($user->user_type === 'technician') {
+                $rawZoneAssigned = $user->zone_assigned;
+                $assignedZoneTokens = array_filter(array_map('trim', explode(',', $rawZoneAssigned)));
 
-            // Convert IDs to zone codes (e.g. 2 -> "021")
-            $assignedZones = Zones::whereIn('id', $assignedZoneIds)->pluck('zone')->toArray();
-            $payload['zones'] = $assignedZones;
+                $assignedZoneNames = [];
+                foreach ($assignedZoneTokens as $token) {
+                    if (str_contains($token, '-')) {
+                        [$mainZone, $book] = explode('-', $token);
+                        $zoneName = "ZONE {$mainZone} BOOK {$book}";
+                    } else {
+                        $zoneName = "ZONE {$token}";
+                    }
+                    $assignedZoneNames[] = $zoneName;
+                }
 
-            if (!empty($payload['zone']) && strtolower($payload['zone']) !== 'all') {
-                if (in_array($payload['zone'], $assignedZones)) {
-                    $payload['zones'] = [$payload['zone']];
-                } else {
-                    $payload['zones'] = [];
+                $assignedZones = Zones::whereIn('zone', $assignedZoneNames)->pluck('zone')->toArray();
+
+                usort($assignedZones, function ($a, $b) {
+                    preg_match('/ZONE (\d+)/', $a, $ma);
+                    preg_match('/ZONE (\d+)/', $b, $mb);
+                    $numA = (int)($ma[1] ?? 0);
+                    $numB = (int)($mb[1] ?? 0);
+                    return $numA <=> $numB;
+                });
+
+                $payload['zones'] = $assignedZones;
+
+                if (!empty($payload['zone']) && strtolower($payload['zone']) !== 'all') {
+                    if (in_array($payload['zone'], $assignedZones)) {
+                        $payload['zones'] = [$payload['zone']];
+                    } else {
+                        $payload['zones'] = [];
+                    }
                 }
             }
-        }
 
-
-        if (isset($payload['isGetPrevious']) && $payload['isGetPrevious'] == true) {
-            try {
-                $response = $this->meterService->getPreviousReading($payload['account_no']);
-                return response()->json($response);
-            } catch (\Exception $e) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Unable to get previous reading.'
-                ], 500);
+            if (isset($payload['isGetPrevious']) && $payload['isGetPrevious'] == true) {
+                try {
+                    $response = $this->meterService->getPreviousReading($payload['account_no']);
+                    return response()->json($response);
+                } catch (\Exception $e) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'Unable to get previous reading.'
+                    ], 500);
+                }
             }
+
+            if (isset($payload['isReRead']) && $payload['isReRead'] == 'true') {
+                return response()->json($this->meterService->getReRead($payload['reference_no']));
+            }
+
+            if (isset($payload['isGetRecentReading']) && $payload['isGetRecentReading'] == true) {
+                return response()->json(session('recent_reading') ?? null);
+            }
+
+            if (isset($payload['isGetReadUnread']) && $payload['isGetReadUnread'] == true) {
+                return response()->json($this->meterService->getReadUnread($payload['targetDate']));
+            }
+
+            return response()->json($this->meterService->filterAccount($payload));
         }
 
-
-        if(isset($payload['isReRead']) && $payload['isReRead'] == 'true') {
-            $response = $this->meterService->getReRead($payload['reference_no']);
-            return response()->json($response);
-        }
-
-        if(isset($payload['isGetRecentReading']) && $payload['isGetRecentReading'] == true) {
-            $response = session('recent_reading') ?? null;
-            return response()->json($response);
-        }
-
-        if(isset($payload['isGetReadUnread']) && $payload['isGetReadUnread'] == true) {
-            $response = $this->meterService->getReadUnread($payload['targetDate']);
-            return response()->json($response);
-        }
-
-        $response = $this->meterService->filterAccount($payload);
-        return response()->json($response);
-        }
-
-        $isReRead = !empty($request->input('re-read')) && !empty($request->input('reference_no')) ? true : false;
+        $isReRead = !empty($request->input('re-read')) && !empty($request->input('reference_no'));
         $reference_no = $request->input('reference_no') ?? null;
 
         if ($isReRead) {
@@ -132,19 +146,40 @@ class ReadingController extends Controller
 
         if ($user->user_type === 'technician') {
             if (empty($user->zone_assigned)) {
-                // Treat as admin if no zones assigned
                 $zones = Zones::all();
                 $showAllOption = true;
             } else {
-                $assignedZoneIds = explode(',', $user->zone_assigned);
-                $zones = Zones::whereIn('id', $assignedZoneIds)->get();
+                $rawZoneAssigned = $user->zone_assigned;
+                $assignedZoneTokens = array_filter(array_map('trim', explode(',', $rawZoneAssigned)));
+
+                $assignedZoneNames = [];
+                foreach ($assignedZoneTokens as $token) {
+                    if (str_contains($token, '-')) {
+                        [$mainZone, $book] = explode('-', $token);
+                        $zoneName = "ZONE {$mainZone} BOOK {$book}";
+                    } else {
+                        $zoneName = "ZONE {$token}";
+                    }
+                    $assignedZoneNames[] = $zoneName;
+                }
+
+                $zones = Zones::whereIn('zone', $assignedZoneNames)->get();
+
+                $zones = $zones->sortBy(function ($zone) {
+                    preg_match('/ZONE (\d+)/', $zone->zone, $match);
+                    return (int)($match[1] ?? 0);
+                })->values();
+
                 $showAllOption = false;
             }
         } else {
-            $zones = Zones::all();
+            $zones = Zones::all()->sortBy(function ($zone) {
+                preg_match('/ZONE (\d+)/', $zone->zone, $match);
+                return (int)($match[1] ?? 0);
+            })->values();
+
             $showAllOption = true;
         }
-
 
         return view('reading.index', [
             'isReRead' => $isReRead,
@@ -152,7 +187,6 @@ class ReadingController extends Controller
             'zones' => $zones,
             'showAllOption' => $showAllOption,
         ]);
-
     }
 
 
@@ -417,7 +451,6 @@ class ReadingController extends Controller
         // 🧾 Generate QR code (HitPay or fallback NovuPay)
         $qr_code = $this->generateService::qr_code($url, 80);
 
-        // 🔹 Reread status
         $isReRead = [
             'status' => $data['current_bill']['reading']['isReRead'] ?? false,
             'reference_no' => $data['current_bill']['reading']['reread_reference_no'] ?? null,
@@ -436,7 +469,6 @@ class ReadingController extends Controller
 
         $zonesQuery = DB::table('concessioner_accounts');
 
-        // Restrict zones if user is a technician
         if ($user->user_type === 'technician' && !empty($user->zone_assigned)) {
             $assignedZoneIds = explode(',', $user->zone_assigned);
             $assignedZones = Zones::whereIn('id', $assignedZoneIds)->pluck('zone')->toArray();
@@ -475,7 +507,6 @@ class ReadingController extends Controller
             $zone->area = $zoneAreas[$zone->zone] ?? 'Unknown';
             return $zone;
         })->sortBy(function ($zone) {
-            // Extract the number from the zone string
             preg_match('/\d+/', $zone->zone, $matches);
             return isset($matches[0]) ? (int) $matches[0] : 0;
         })->values();

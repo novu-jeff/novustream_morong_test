@@ -83,6 +83,34 @@ Route::middleware('auth:admins')->prefix('admin')->group(function () {
     Route::get('/reports/download', [ReportsController::class, 'downloadSummary'])
         ->name('reports.download');
 
+    // EXISTING SUMMARY DOWNLOAD ROUTE
+    Route::get('/reports/download', [ReportsController::class, 'downloadSummary'])
+        ->name('reports.download');
+
+    // >>> THIS IS THE MISSING ROUTE <<<
+    Route::get('/reports/downloadable-files', [ReportsController::class, 'downloadFilesIndex'])
+        ->name('reports.download-index');
+
+    // NEW DOWNLOAD ROUTES FOR OTHER REPORTS
+    Route::get('/reports/download/ageing/detailed', [ReportsController::class, 'downloadAgeingDetailed'])
+        ->name('reports.download.ageing.detailed');
+
+    Route::get('/reports/download/penalty/detailed', [ReportsController::class, 'downloadPenaltyDetailed'])
+        ->name('reports.download.penalty.detailed');
+
+    Route::get('/reports/download/franchise-tax/detailed', [ReportsController::class, 'downloadFranchiseTaxDetailed'])
+        ->name('reports.download.franchise-tax.detailed');
+
+    Route::get('/reports/download/disconnected-concessionaires', [ReportsController::class, 'downloadDisconnectedConcessionaires'])
+        ->name('reports.download.disconnected-concessionaires');
+
+    Route::get('/reports/download/ageing/summary', [ReportsController::class, 'downloadAgeingSummary'])
+        ->name('reports.download.ageing.summary');
+
+    Route::get('/reports/download/penalty/summary', [ReportsController::class, 'downloadPenaltySummary'])
+        ->name('reports.download.penalty.summary');
+
+
     Route::prefix('users')->group(function() {
 
         Route::resource('roles', RoleController::class)
