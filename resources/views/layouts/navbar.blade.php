@@ -30,7 +30,7 @@
 				@endcan
 				@canany(['admin', 'cashier'])
 					<a href="{{route('payments.index')}}"> Payments </a>
-                    <a href="{{ route('reports.download-index') }}"> Files </a>
+                    <a href="{{route('reports.download-index')}}"> Files </a>
 				@endcanany
 				@can('admin')
 					<div class="dropdown px-0 mx-0">

@@ -48,10 +48,20 @@
                 <label class="form-label">End Date (optional)</label>
                 <input type="date" name="end_date" class="form-control">
             </div>
+
+            {{-- ✅ Zone Dropdown (Required) --}}
             <div class="col-md-3">
-                <label class="form-label">Zone (optional)</label>
-                <input type="text" name="zone" class="form-control">
+                <label class="form-label">Zone</label>
+                <select name="zone" class="form-select" required>
+                    <option value="">Select Zone</option>
+                    <option value="all">All Zones</option>
+                    @foreach ($zones as $z)
+                        <option value="{{ $z }}">{{ $z }}</option>
+                    @endforeach
+                </select>
             </div>
+
+
             <div class="col-md-3">
                 <label class="form-label">Classification (optional)</label>
                 <input type="text" name="classification" class="form-control">

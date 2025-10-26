@@ -48,6 +48,18 @@ class ConcessionerAccount extends Model
     {
         return $this->belongsTo(User::class, 'user_id');
     }
+
+    public function discounts()
+    {
+        return $this->hasMany(Discount::class, 'account_no', 'account_no');
+    }
+
+    public function statusCode()
+    {
+        return $this->belongsTo(StatusCode::class, 'status', 'code');
+    }
+
+
 }
 
 ?>

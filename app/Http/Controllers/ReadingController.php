@@ -631,7 +631,7 @@ class ReadingController extends Controller
 
     try {
         $account = $this->meterService->getAccount($account_no);
-
+        $zone = $account->zone ?? null;
         $present_reading = $payload['present_reading'];
         $previous_reading = $payload['previous_reading'];
         $consumption = $present_reading - $previous_reading;
@@ -640,13 +640,13 @@ class ReadingController extends Controller
             throw new \Exception('Present reading must be greater than or equal to previous reading.');
         }
 
-$propertyTypeId = DB::table('property_types')
-    ->whereRaw("
-        LOWER(REPLACE(REPLACE(name, '''', ''), '\"', '')) = ?
-    ", [
-        strtolower(str_replace(['"', "'"], '', $account->property_type))
-    ])
-    ->value('id');
+        $propertyTypeId = DB::table('property_types')
+            ->whereRaw("
+                LOWER(REPLACE(REPLACE(name, '''', ''), '\"', '')) = ?
+            ", [
+                strtolower(str_replace(['"', "'"], '', $account->property_type))
+            ])
+            ->value('id');
 
 
         if (!$propertyTypeId) {
@@ -717,72 +717,54 @@ $propertyTypeId = DB::table('property_types')
 
         $today = Carbon::today();
 
-        $discountRecord = Discount::where('account_no', $account->account_no)
-            // ->whereDate('effective_date', '<=', $today)
-            // ->whereDate('expired_date', '>=', $today)
-            ->first();
+        // $discountRecord = Discount::where('account_no', $account->account_no)
+        //     // ->whereDate('effective_date', '<=', $today)
+        //     // ->whereDate('expired_date', '>=', $today)
+        //     ->first();
 
-        $totalDiscount = 0;
+        // 1. Apply discount if account is eligible
+$totalDiscount = 0;
+$discountRecord = Discount::where('account_no', $account->account_no)->first();
 
-        if ($discountRecord && $discountRecord->discount_type_id) {
-        $discountTypeRow = DiscountType::find($discountRecord->discount_type_id);
+if ($discountRecord) {
+    $seniorDiscount = PaymentDiscount::where('eligible', 'senior')->first();
 
-        // Fetch global ruling to check snr_dc_rule
-        $ruling = GlobalRuling::first();
+    if ($seniorDiscount) {
+        $baseAmount = $seniorDiscount->percentage_of === 'basic_charge' ? $basicCharge : $bill->amount;
+        $seniorAmount = $seniorDiscount->type === 'fixed'
+            ? round(floatval($seniorDiscount->amount), 2)
+            : round($baseAmount * floatval($seniorDiscount->amount), 2);
 
-        if ($discountRecord->discount_type_id == 1) {
-            $seniorDiscount = PaymentDiscount::where('eligible', 'senior')->first();
-
-            if ($seniorDiscount) {
-                // 🧮 Get consumption from computed reading
-                $consumption = $consumption ?? ($present_reading - $previous_reading);
-
-                // ✅ Apply senior discount only if consumption <= snr_dc_rule
-                $eligibleForSeniorDiscount = true;
-
-                if ($ruling && $consumption > floatval($ruling->snr_dc_rule)) {
-                    $eligibleForSeniorDiscount = false;
-                }
-
-                if ($eligibleForSeniorDiscount) {
-                    $baseAmount = $seniorDiscount->percentage_of === 'basic_charge' ? $basicCharge : $totalAmount;
-
-                    $seniorAmount = $seniorDiscount->type === 'fixed'
-                        ? round(floatval($seniorDiscount->amount), 2)
-                        : round($baseAmount * floatval($seniorDiscount->amount), 2);
-
-                    BillDiscount::create([
-                        'bill_id' => $bill->id,
-                        'name' => $seniorDiscount->name,
-                        'description' => $seniorDiscount->type ?? null,
-                        'amount' => $seniorAmount,
-                    ]);
-
-                    $totalDiscount += $seniorAmount;
-                }
-            }
-        }
-
-        // 🧾 Franchise Tax logic remains unchanged
-        $franchiseTax = PaymentDiscount::where('name', 'Franchise Tax')->first();
-
-        if ($franchiseTax) {
-            $baseAmount = $franchiseTax->percentage_of === 'basic_charge' ? $basicCharge : $bill->amount;
-
-            $franchiseAmount = $franchiseTax->type === 'fixed'
-                ? round(floatval($franchiseTax->amount), 2)
-                : round($baseAmount * floatval($franchiseTax->amount), 2);
-
-            $bill->tax = $franchiseAmount;
-            $bill->amount += $franchiseAmount;
-        }
-    }
-
-        $bill->update([
-            'discount' => $totalDiscount,
-            'amount_after_due' => $bill->amount + $penaltyAmount,
-            'tax' => $franchiseAmount ?? 0,
+        BillDiscount::create([
+            'bill_id' => $bill->id,
+            'name' => $seniorDiscount->name,
+            'description' => $seniorDiscount->type ?? null,
+            'amount' => $seniorAmount,
         ]);
+
+        $totalDiscount += $seniorAmount;
+    }
+}
+
+// 2. Always apply franchise tax
+$franchiseTax = PaymentDiscount::whereRaw('LOWER(name) = ?', ['franchise tax'])->first();
+
+if ($franchiseTax) {
+    $baseAmount = $franchiseTax->percentage_of === 'basic_charge' ? $basicCharge : $bill->amount;
+    $franchiseAmount = $franchiseTax->type === 'fixed'
+        ? round(floatval($franchiseTax->amount), 2)
+        : round($baseAmount * floatval($franchiseTax->amount), 2);
+
+    $bill->tax = $franchiseAmount;
+    $bill->amount += $franchiseAmount;
+}
+
+// 3. Update bill totals
+$bill->update([
+    'discount' => $totalDiscount,
+    'amount_after_due' => $bill->amount + $penaltyAmount,
+    'tax' => $franchiseAmount ?? 0,
+]);
 
         // Generate payment QR
         $paymentPayload = [
