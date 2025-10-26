@@ -9,12 +9,21 @@
 
         <div class="mb-3">
             <label class="form-label">Pick reports</label>
+
+            {{-- Select All Checkbox --}}
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="select-all-reports">
+                <label class="form-check-label mt-1" for="select-all-reports">
+                    Select All
+                </label>
+            </div>
+
             <div class="row">
                 @foreach($availableReports as $report)
                 <div class="col-md-4">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" value="{{ $report }}" name="reports[]" id="report-{{ \Illuminate\Support\Str::slug($report) }}">
-                        <label class="form-check-label" for="report-{{ \Illuminate\Support\Str::slug($report) }}">
+                    <div class="form-check ">
+                        <input class="form-check-input report-checkbox" type="checkbox" value="{{ $report }}" name="reports[]" id="report-{{ \Illuminate\Support\Str::slug($report) }}">
+                        <label class="form-check-label mt-1" for="report-{{ \Illuminate\Support\Str::slug($report) }}">
                             {{ $report }}
                         </label>
                     </div>
@@ -74,3 +83,14 @@
     </form>
 </div>
 @endsection
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const selectAll = document.getElementById('select-all-reports');
+        const checkboxes = document.querySelectorAll('.report-checkbox');
+
+        selectAll.addEventListener('change', function () {
+            checkboxes.forEach(cb => cb.checked = selectAll.checked);
+        });
+    });
+</script>
