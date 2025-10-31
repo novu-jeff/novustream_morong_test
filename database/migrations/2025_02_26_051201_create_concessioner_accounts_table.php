@@ -28,7 +28,8 @@ return new class extends Migration
                 ->nullable();
             $table->string('meter_serial_no')
                 ->nullable();
-            $table->string('sc_no');
+            $table->string('sc_no')
+                ->nullable();
             $table->string('date_connected');
             $table->string('sequence_no');
             $table->string('meter_type')

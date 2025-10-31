@@ -197,7 +197,7 @@
                     </div>
                     <div class="col-md-3 mb-3">
                         <label :for="'sc_no_' + index" class="form-label">
-                          SC No <small class="text-danger">( required )</small>
+                          SC No <small class="text-danger"></small>
                         </label>
                         <input type="text" class="form-control"
                               :id="'sc_no_' + index"

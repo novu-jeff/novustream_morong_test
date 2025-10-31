@@ -30,7 +30,7 @@ class StoreClientRequest extends FormRequest
             'accounts.*.address' => 'required|string|max:255',
             'accounts.*.rate_code' => 'required|numeric|gt:0',
             'accounts.*.status' => ['required', Rule::in($validStatuses)],
-            'accounts.*.sc_no' => 'required',
+            'accounts.*.sc_no' => 'nullable',
             'accounts.*.meter_brand' => 'nullable|string|max:256',
             'accounts.*.meter_serial_no' => 'required',
             'accounts.*.date_connected' => 'required',

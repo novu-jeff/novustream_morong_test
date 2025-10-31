@@ -63,7 +63,7 @@ class UpdateClientRequest extends FormRequest
             'accounts.*.property_type' => 'required|exists:property_types,id',
             'accounts.*.rate_code' => 'required|numeric|gt:0',
             'accounts.*.status' => ['required', Rule::in($validStatusCodes),],
-            'accounts.*.sc_no' => 'required|string',
+            'accounts.*.sc_no' => 'nullable|string',
             'accounts.*.meter_brand' => 'nullable|string|max:256',
             'accounts.*.meter_serial_no' => 'required|string',
             'accounts.*.date_connected' => 'required|date',
