@@ -723,48 +723,48 @@ class ReadingController extends Controller
         //     ->first();
 
         // 1. Apply discount if account is eligible
-$totalDiscount = 0;
-$discountRecord = Discount::where('account_no', $account->account_no)->first();
+        $totalDiscount = 0;
+        $discountRecord = Discount::where('account_no', $account->account_no)->first();
 
-if ($discountRecord) {
-    $seniorDiscount = PaymentDiscount::where('eligible', 'senior')->first();
+        if ($discountRecord) {
+            $seniorDiscount = PaymentDiscount::where('eligible', 'senior')->first();
 
-    if ($seniorDiscount) {
-        $baseAmount = $seniorDiscount->percentage_of === 'basic_charge' ? $basicCharge : $bill->amount;
-        $seniorAmount = $seniorDiscount->type === 'fixed'
-            ? round(floatval($seniorDiscount->amount), 2)
-            : round($baseAmount * floatval($seniorDiscount->amount), 2);
+            if ($seniorDiscount) {
+                $baseAmount = $seniorDiscount->percentage_of === 'basic_charge' ? $basicCharge : $bill->amount;
+                $seniorAmount = $seniorDiscount->type === 'fixed'
+                    ? round(floatval($seniorDiscount->amount), 2)
+                    : round($baseAmount * floatval($seniorDiscount->amount), 2);
 
-        BillDiscount::create([
-            'bill_id' => $bill->id,
-            'name' => $seniorDiscount->name,
-            'description' => $seniorDiscount->type ?? null,
-            'amount' => $seniorAmount,
+                BillDiscount::create([
+                    'bill_id' => $bill->id,
+                    'name' => $seniorDiscount->name,
+                    'description' => $seniorDiscount->type ?? null,
+                    'amount' => $seniorAmount,
+                ]);
+
+                $totalDiscount += $seniorAmount;
+            }
+        }
+
+        // 2. Always apply franchise tax
+        $franchiseTax = PaymentDiscount::whereRaw('LOWER(name) = ?', ['franchise tax'])->first();
+
+        if ($franchiseTax) {
+            $baseAmount = $franchiseTax->percentage_of === 'basic_charge' ? $basicCharge : $bill->amount;
+            $franchiseAmount = $franchiseTax->type === 'fixed'
+                ? round(floatval($franchiseTax->amount), 2)
+                : round($baseAmount * floatval($franchiseTax->amount), 2);
+
+            $bill->tax = $franchiseAmount;
+            $bill->amount += $franchiseAmount;
+        }
+
+        // 3. Update bill totals
+        $bill->update([
+            'discount' => $totalDiscount,
+            'amount_after_due' => $bill->amount + $penaltyAmount,
+            'tax' => $franchiseAmount ?? 0,
         ]);
-
-        $totalDiscount += $seniorAmount;
-    }
-}
-
-// 2. Always apply franchise tax
-$franchiseTax = PaymentDiscount::whereRaw('LOWER(name) = ?', ['franchise tax'])->first();
-
-if ($franchiseTax) {
-    $baseAmount = $franchiseTax->percentage_of === 'basic_charge' ? $basicCharge : $bill->amount;
-    $franchiseAmount = $franchiseTax->type === 'fixed'
-        ? round(floatval($franchiseTax->amount), 2)
-        : round($baseAmount * floatval($franchiseTax->amount), 2);
-
-    $bill->tax = $franchiseAmount;
-    $bill->amount += $franchiseAmount;
-}
-
-// 3. Update bill totals
-$bill->update([
-    'discount' => $totalDiscount,
-    'amount_after_due' => $bill->amount + $penaltyAmount,
-    'tax' => $franchiseAmount ?? 0,
-]);
 
         // Generate payment QR
         $paymentPayload = [

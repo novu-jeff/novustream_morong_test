@@ -261,19 +261,56 @@
                 `);
 
                 data.forEach((account, index) => {
-                    const status = account.status;
-                    const isActive = account.user?.isActive == 1;
+                    const status = account.status; // from concessioner_accounts table
+                    const statusColors = {
+                        0: '#fff3cd', // NEW CONCESSIONAIRE (light yellow)
+                        1: '#ffffff', // ACTIVE (white)
+                        2: '#ffe0b2', // FOR DISCONNECTION (light orange)
+                        3: '#f8d7da', // DISCONNECTED (light red)
+                        4: '#cff4fc', // FOR RECONNECTION (light blue)
+                        5: '#e2e3e5'  // WRITTEN OFF (gray)
+                    };
+
+                    const statusNames = {
+                        0: 'NEW CONCESSIONAIRE',
+                        1: 'ACTIVE',
+                        2: 'FOR DISCONNECTION',
+                        3: 'DISCONNECTED',
+                        4: 'FOR RECONNECTION',
+                        5: 'WRITTEN OFF'
+                    };
+
+                    const bgColor = statusColors[status] || '#ffffff';
+                    const statusName = statusNames[status] || 'UNKNOWN';
+
+                    const dotColors = {
+                        0: '#ffc107', // NEW
+                        1: '#28a745', // ACTIVE
+                        2: '#ff9800', // FOR DISCONNECTION
+                        3: '#dc3545', // DISCONNECTED
+                        4: '#0dcaf0', // FOR RECONNECTION
+                        5: '#6c757d'  // WRITTEN OFF
+                    };
+
+                    const dotColor = dotColors[status] || '#6c757d';
 
                     const cardStyle = `
-                        background-color: ${isActive ? '#fff' : '#ffffffff'};
+                        background-color: ${bgColor};
                         cursor: pointer;
+                        position: relative;
                     `;
 
-                    const textColor = isActive ? '' : 'color: #000000ff;';
-
-                    const dot = isActive
-                        ? `<div style="width: 12px; height: 12px; border-radius: 50%; position: absolute; top: 18px; right: 25px; background-color: #28a745;"></div>`
-                        : `<div style="width: 12px; height: 12px; border-radius: 50%; position: absolute; top: 18px; right: 25px; background-color: #ff1a1aff;"></div>`;
+                    const dot = `
+                        <div style="
+                            width: 12px;
+                            height: 12px;
+                            border-radius: 50%;
+                            position: absolute;
+                            top: 18px;
+                            right: 25px;
+                            background-color: ${dotColor};
+                        " title="${statusName}"></div>
+                    `;
 
                     const html = `
                         <div class="card shadow mb-3 account-card"
@@ -281,13 +318,14 @@
                             data-index="${offset + index}"
                             style="${cardStyle}"
                             data-account='${JSON.stringify(account)}'>
-                            <div class="card-body" style="${textColor}">
+                            <div class="card-body">
                                 ${dot}
                                 <h5 class="card-title mb-0 fw-normal">Account No: ${account.account_no}</h5>
                                 <hr class="my-2 mb-2">
                                 <h5 class="fw-normal">Meter No: ${account.meter_serial_no}</h5>
                                 <h4>${account.user ? account.user.name : 'N/A'}</h4>
                                 <h5 class="fw-normal text-capitalize">${account.address ?? 'N/A'}</h5>
+                                <div class="mt-2 small text-muted fw-bold text-uppercase">${statusName}</div>
                             </div>
                         </div>
                     `;

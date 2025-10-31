@@ -26,7 +26,7 @@
             </div>
             <div class="inner-content mt-5 pb-5 mb-5">
                 <div class="row align-items-end gy-2 gx-3 mb-4">
-                    <div class="col-auto">
+                    <div class="col-md-1">
                         <label class="form-label mb-1">Show Entries</label>
                         <select name="entries" id="entries" class="form-select text-uppercase">
                             @foreach([10, 25, 50, 100, 200, 250, 350, 400, 450, 500] as $entry)
@@ -37,7 +37,7 @@
                         </select>
                     </div>
 
-                    <div class="col-auto">
+                    <div class="col-md-3">
                         <label class="form-label mb-1">Zone</label>
                         <select name="zone_no" id="zone_no" class="form-select text-uppercase">
                             <option value="all" {{ $zone === 'all' ? 'selected' : '' }}>All Zones</option>

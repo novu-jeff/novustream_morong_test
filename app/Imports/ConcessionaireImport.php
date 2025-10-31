@@ -49,13 +49,10 @@ class ConcessionaireImport implements
                 }
             ],
             'name' => ['required'],
-            'zone' => ['required'], // ✅ Ensure zone is present in the Excel column
+            'zone' => ['required'],
         ];
     }
 
-    /**
-     * Custom validation messages
-     */
     public function customValidationMessages(): array
     {
         return [
@@ -64,9 +61,6 @@ class ConcessionaireImport implements
         ];
     }
 
-    /**
-     * Handle each imported row
-     */
     public function model(array $row)
     {
         $rowNum = $this->rowCounter++;
@@ -74,9 +68,8 @@ class ConcessionaireImport implements
 
         try {
             $accountNo = $this->sanitizeAccountNo($row['account_no'] ?? null);
-            $zone      = $row['zone'] ?? null; // ✅ use the evaluated value from Excel zone column
+            $zone      = $row['zone'] ?? null;
 
-            // Create user record
             $user = User::create([
                 'name'       => $row['name'],
                 'contact_no' => $row['contact_no'] ?? null,
@@ -93,7 +86,7 @@ class ConcessionaireImport implements
                     'account_no'      => $accountNo,
                     'address'         => $row['address'] ?? null,
                     'property_type'   => $property_type,
-                    'rate_code'       => $row['rate_code'] ?? null,
+                    'rate_code'       => $this->formatRateCode($row['rate_code'] ?? null),
                     'status'          => $row['status'] ?? null,
                     'meter_brand'     => $row['meter_brand'] ?? null,
                     'meter_serial_no' => $row['meter_serial_no'] ?? null,
@@ -114,21 +107,25 @@ class ConcessionaireImport implements
         }
     }
 
-    /**
-     * Sanitize Account No (ignore formulas or invalid strings)
-     */
     protected function sanitizeAccountNo(?string $accountNo): ?string
     {
         if (!$accountNo) return null;
 
         $accountNo = trim($accountNo);
-        if (str_starts_with($accountNo, '=')) return null; // skip Excel formula strings
+        if (str_starts_with($accountNo, '=')) return null;
         return $accountNo;
     }
 
-    /**
-     * Parse Excel date
-     */
+    protected function formatRateCode($rateCode): ?string
+    {
+        if (is_null($rateCode) || $rateCode === '') {
+            return null;
+        }
+
+        $rateCode = (int) $rateCode;
+        return str_pad($rateCode, 2, '0', STR_PAD_LEFT);
+    }
+
     protected function parseDate($value): ?string
     {
         if (!$value) return null;

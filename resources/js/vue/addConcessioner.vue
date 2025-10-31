@@ -433,26 +433,28 @@ export default {
     };
   },
     created() {
-        if (this.data) {
-            this.concessioner = {
-            ...this.concessioner,
-            ...this.data,
-            };
+  if (this.data) {
+    // Merge base concessioner data
+    this.concessioner = {
+      ...this.concessioner,
+      ...this.data,
+    };
 
-            this.concessioner.accounts = this.data.accounts.map(account => {
-            const matchedType = this.property_types.find(
-                type => type.name.toLowerCase() === account.property_type?.toLowerCase()
-            );
+    // Map accounts — match property_type based on rate_code instead of name
+    this.concessioner.accounts = this.data.accounts.map(account => {
+      const matchedType = this.property_types.find(
+        type => type.rate_code === account.rate_code
+      );
 
-            return {
-                ...account,
-                property_type: matchedType ? matchedType.id : null,
-            };
-            });
+      return {
+        ...account,
+        property_type: matchedType ? matchedType.id : null,
+      };
+    });
 
-            console.log(this.concessioner);
-        }
-    },
+    console.log('Loaded concessioner with matched property types:', this.concessioner);
+  }
+},
   methods: {
     getRateCodeByPropertyTypeId(propertyTypeId) {
   const type = this.property_types.find((t) => t.id === propertyTypeId);

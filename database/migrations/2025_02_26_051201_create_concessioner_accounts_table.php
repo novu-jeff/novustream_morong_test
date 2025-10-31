@@ -22,7 +22,7 @@ return new class extends Migration
                 ->nullable();
             $table->string('property_type')
                 ->nullable();
-            $table->integer('rate_code');
+            $table->string('rate_code');
             $table->string('status');
             $table->string('meter_brand')
                 ->nullable();

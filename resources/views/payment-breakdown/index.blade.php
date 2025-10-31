@@ -13,7 +13,7 @@
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" href="{{route('payment-breakdown.create', ['action' => 'regular'])}}">Regular Breakdown</a></li>
                             <li><a class="dropdown-item" href="{{route('payment-breakdown.create', ['action' => 'penalty'])}}">Penalty Breakdown</a></li>
-                            <li><a class="dropdown-item" href="{{route('payment-breakdown.create', ['action' => 'discount'])}}">Discounts</a></li>
+                            <li><a class="dropdown-item" href="{{route('payment-breakdown.create', ['action' => 'discount'])}}">Discounts & Penalty</a></li>
                             <li><a class="dropdown-item" href="{{route('payment-breakdown.create', ['action' => 'service-fee'])}}">Service Fee</a></li>
                         </ul>
                     </div>
@@ -23,7 +23,7 @@
             <div class="inner-content mt-5 pb-5">
 
                 <ul class="nav nav-pills mb-5" id="pills-tab" role="tablist">
-                    @foreach(['regular' => 'Regular Breakdown', 'penalty' => 'Penalty Breakdown', 'discount' => 'Discounts', 'service-fee' => 'Service Fee', 'ruling' => 'Ruling'] as $key => $label)
+                    @foreach(['regular' => 'Regular Breakdown', 'penalty' => 'Penalty Breakdown', 'discount' => 'Discounts & Penalty', 'service-fee' => 'Service Fee', 'ruling' => 'Ruling'] as $key => $label)
                         <li class="nav-item" role="presentation">
                             <a
                                 class="nav-link text-uppercase  {{ $view == $key ? 'active' : '' }}"
