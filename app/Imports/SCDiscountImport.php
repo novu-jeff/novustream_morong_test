@@ -56,7 +56,7 @@ class SCDiscountImport implements
         $row = array_map('trim', $row);
 
         try {
-            $accountNo = $row['account_no'] ?? null;
+            $accountNo = isset($row['account_no']) ? (string)$row['account_no'] : null;
             $idNo = $row['id_no'] ?? null;
             $effectiveDate = $this->parseDate($row['effectivity_date'] ?? null);
             $expiredDate = $this->parseDate($row['expired_date'] ?? null);

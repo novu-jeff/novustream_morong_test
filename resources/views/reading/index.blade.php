@@ -3,8 +3,8 @@
 @section('content')
     <main class="main">
         <div class="responsive-wrapper">
-            <div class="inner-content mt-5 pb-5 mb-5">
-                <div class="d-md-flex justify-content-center pb-5 gap-5">
+            <div class="inner-content">
+                <div class="d-md-flex justify-content-center gap-5">
                     <div class="mb-5" style="width: 100%">
                         <div class="card shadow border-0 p-2 pb-0 px-3" style="border-radius: 20px;">
                             <div class="card-body">
@@ -65,12 +65,12 @@
                         </div>
                     </div>
                     <div class="mb-5" style="width: 100%">
-                        <div class="concessionaire-result">
+                        <div class="concessionaire-result position-sticky top-0 bg-white z-2 py-2">
 
                         </div>
-                        <div class="concessionaire-list">
+                        <div class="concessionaire-list" style="max-height: calc(100vh - 300px); overflow-y: auto;">
 
-                        </d iv>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -281,8 +281,6 @@ class MeterService {
         return $grouped->values()->all();
     }
 
-
-
     public static function getData(?int $id = null) {
 
         if(!is_null($id)) {
@@ -533,6 +531,17 @@ class MeterService {
             return [
                 'status' => 'error',
                 'message' => "We've noticed that there's no ruling set. Please add first."
+            ];
+        }
+
+        $other_deductions = $this->paymentBreakdownService::getData();
+        $penalties = $this->paymentBreakdownService::getPenalty();
+
+        if ((empty($other_deductions) || count($other_deductions) === 0)
+            && (empty($penalties) || count($penalties) === 0)) {
+            return [
+                'status' => 'error',
+                'message' => "We've noticed that there are no payment breakdowns or penalties set. Please add first."
             ];
         }
 
