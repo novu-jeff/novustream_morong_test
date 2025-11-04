@@ -9,24 +9,17 @@ use Maatwebsite\Excel\Concerns\SkipsFailures;
 use Maatwebsite\Excel\Concerns\SkipsOnFailure;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
-use Maatwebsite\Excel\Concerns\WithCustomValueBinder;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
-use Maatwebsite\Excel\Concerns\WithCalculatedFormulas;
-use Maatwebsite\Excel\DefaultValueBinder;
-use PhpOffice\PhpSpreadsheet\Cell\Cell;
-use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
 
-class SCDiscountImport extends DefaultValueBinder implements
+class SCDiscountImport implements
     ToModel,
     WithHeadingRow,
     WithValidation,
     SkipsEmptyRows,
     SkipsOnFailure,
-    WithChunkReading,
-    WithCustomValueBinder,
-    WithCalculatedFormulas
+    WithChunkReading
 {
     use SkipsFailures;
 
@@ -35,21 +28,13 @@ class SCDiscountImport extends DefaultValueBinder implements
     protected int $inserted = 0;
     protected int $updated = 0;
 
-    public function bindValue(Cell $cell, $value)
-    {
-        if ($cell->getColumn() === 'A') {
-            // Force account number to be treated as string to preserve leading zeros
-            $cell->setValueExplicit($value, DataType::TYPE_STRING);
-            return true;
-        }
-
-        return parent::bindValue($cell, $value);
-    }
-
     public function rules(): array
     {
         return [
             'account_no' => ['required'],
+            // 'id_no' => ['required'],
+            // 'effectivity_date' => ['required'],
+            // 'expired_date' => ['required'],
             'type' => ['required'],
         ];
     }
@@ -58,6 +43,9 @@ class SCDiscountImport extends DefaultValueBinder implements
     {
         return [
             'account_no.required' => 'Missing required field: account_no',
+            // 'id_no.required' => 'Missing required field: id_no',
+            // 'effectivity_date.required' => 'Missing required field: effectivity_date',
+            // 'expired_date.required' => 'Missing required field: expired_date',
             'type.required' => 'Missing required field: type',
         ];
     }
@@ -68,7 +56,7 @@ class SCDiscountImport extends DefaultValueBinder implements
         $row = array_map('trim', $row);
 
         try {
-            $accountNo = $this->sanitizeAccountNo($row['account_no'] ?? null);
+            $accountNo = $row['account_no'] ?? null;
             $idNo = $row['id_no'] ?? null;
             $effectiveDate = $this->parseDate($row['effectivity_date'] ?? null);
             $expiredDate = $this->parseDate($row['expired_date'] ?? null);
@@ -105,21 +93,11 @@ class SCDiscountImport extends DefaultValueBinder implements
             $this->skippedRows[] = "Row $rowNum skipped: Exception - " . $e->getMessage();
             Log::error('Import error in Senior Citizen Discount Sheet', [
                 'error' => $e->getMessage(),
-                'row'   => $row,
+                'row' => $row,
                 'trace' => $e->getTraceAsString(),
             ]);
             return null;
         }
-    }
-
-    private function sanitizeAccountNo(?string $accountNo): ?string
-    {
-        if (!$accountNo) return null;
-
-        $accountNo = trim($accountNo);
-        // Remove any dashes/hyphens, then pad to same length (10 digits assumed)
-        $cleaned = str_replace(['-', ' '], '', $accountNo);
-        return str_pad($cleaned, 10, '0', STR_PAD_LEFT);
     }
 
     private function parseDate($value)

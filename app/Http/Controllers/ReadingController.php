@@ -721,10 +721,28 @@ class ReadingController extends Controller
         //     // ->whereDate('effective_date', '<=', $today)
         //     // ->whereDate('expired_date', '>=', $today)
         //     ->first();
-
+        $hardcodedDiscounts = [
+            '011-22-011450' => 0.02, // 2%
+            '091-22-092230' => 0.05, // 5%
+            '111-22-111720' => 0.02, // 2%
+        ];
         // 1. Apply discount if account is eligible
         $totalDiscount = 0;
         $discountRecord = Discount::where('account_no', $account->account_no)->first();
+
+        if (isset($hardcodedDiscounts[$account_no])) {
+            $discountRate = $hardcodedDiscounts[$account_no];
+            $hardcodedAmount = round($basicCharge * $discountRate, 2);
+
+            BillDiscount::create([
+                'bill_id' => $bill->id,
+                'name' => 'Hardcoded Discount',
+                'description' => ($discountRate * 100) . '%',
+                'amount' => $hardcodedAmount,
+            ]);
+
+            $totalDiscount += $hardcodedAmount;
+        }
 
         if ($discountRecord) {
             $seniorDiscount = PaymentDiscount::where('eligible', 'senior')->first();

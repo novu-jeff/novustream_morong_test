@@ -240,10 +240,31 @@
                                 {{number_format($data['current_bill']['assumed_penalty'], 2)}}
                             </div>
                         </div>
+                        @php
+                            $tax = $data['current_bill']['tax'] ?? null;
+                            $penalty = $data['client']['sc_discount']['penalty'] ?? null;
+                            $prevUnpaid = (float)($data['current_bill']['previous_unpaid'] ?? 0);
+                            $discount = 0;
+                                if (isset($data['current_bill']['discount'])) {
+                                    if (is_array($data['current_bill']['discount'])) {
+                                        $discount = collect($data['current_bill']['discount'])->sum('amount');
+                                    } else {
+                                        $discount = (float) $data['current_bill']['discount'];
+                                    }
+                                }
+                            $dueDate = isset($data['current_bill']['due_date'])
+                                        ? \Carbon\Carbon::parse($data['current_bill']['due_date'])
+                                        : null;
+
+                            $today = \Carbon\Carbon::today();
+
+                            $applicablePenalty = ($dueDate && $today->gt($dueDate)) ? $penalty : 0;
+                            $advancePayment = (float)($data['current_bill']['advances'] ?? 0);
+                        @endphp
                         <div class="oversized" style="margin: 5px 0 0 0; display: flex; justify-content: space-between; align-items: center;">
                             <div style="text-transform: uppercase; font-size: 20px; font-weight: 800;">Amount After Due:</div>
                             <div style="text-transform: uppercase; font-size: 20px; font-weight: 800;">
-                                {{number_format($data['current_bill']['assumed_amount_after_due'], 2)}}
+                                {{number_format($data['current_bill']['assumed_amount_after_due'] + $tax - $discount + $prevUnpaid, 2)}}
                             </div>
                         </div>
                         <div style="margin: 8px 0 5px 0; width: 100%; height: 1px; border-bottom: 1px dashed black;"></div>
