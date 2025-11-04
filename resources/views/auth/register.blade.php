@@ -6,7 +6,7 @@
     <div class="container right-panel-active scroll" id="container">
         <div class="form-container sign-up-container">
             <form method="POST" action="{{ route('register') }}">
-                @csrf                
+                @csrf
                 <h1 class="fw-bold mb-2">Sign in</h1>
                 <span>or use your email for registration</span>
                 <div class="w-100">
@@ -47,7 +47,7 @@
         <div class="overlay-container">
             <div class="overlay">
                 <div class="overlay-panel overlay-left">
-                    <img src="{{asset('images/novustreamlogo.png')}}" alt="" srcset="" class="w-100">
+                    <img src="{{asset('images/clientnobgb.png')}}" alt="" srcset="" class="w-75">
                     <p>To keep connected with us please login with your personal info</p>
                     <a href="/login" class="btn btn-primary border-2 fs-6 px-5 py-3 text-white fw-bold text-uppercase fw-bold" id="signIn">Sign In</a>
                 </div>

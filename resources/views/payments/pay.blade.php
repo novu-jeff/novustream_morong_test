@@ -170,13 +170,13 @@
                                             <div class="oversized" style="display: flex; justify-content: space-between; margin: 5px 0 5px 0;">
                                                 <div style="font-size: 20px; font-weight: 800; text-transform: uppercase">Current Billing:</div>
                                                 <div style="font-size: 20px; font-weight: 800; text-transform: uppercase">
-                                                    {{ number_format(abs((float) $data['current_bill']['total'] - (float) $arrears - (float) $totalDiscount + (float) $franchiseTax), 2) }}
+                                                    {{ number_format(abs((float) $data['current_bill']['amount']), 2) }}
                                                 </div>
                                             </div>
                                             <div style="margin: 5px 0 5px 0; width: 100%; height: 1px; border-bottom: 1px dashed black;"></div>
                                             <div class="oversized" style="display: flex; justify-content: space-between; align-items: center;">
                                                 <div style="text-transform: uppercase; font-size: 20px; font-weight: 800;">Amount Due:</div>
-                                                <div style="text-transform: uppercase; font-size: 20px; font-weight: 800;">{{number_format($data['current_bill']['amount'], 2)}} </div>
+                                                <div style="text-transform: uppercase; font-size: 20px; font-weight: 800;">{{ number_format(abs((float) $data['current_bill']['amount'] - (float) $arrears - (float) $totalDiscount + (float) $franchiseTax), 2) }} </div>
                                             </div>
                                             <div style="margin: 5px 0 0 0; display: flex; justify-content: space-between; align-items: center;">
                                                 <div style="text-transform: uppercase;">Payment After Due Date</div>
@@ -194,10 +194,32 @@
                                                     {{number_format($data['current_bill']['assumed_penalty'], 2)}}
                                                 </div>
                                             </div>
+                                            @php
+                                                $penalty = $data['current_bill']['penalty'] ?? null;
+                                                $discount = 0;
+                                                    if (isset($data['current_bill']['discount'])) {
+                                                        if (is_array($data['current_bill']['discount'])) {
+                                                            $discount = collect($data['current_bill']['discount'])->sum('amount');
+                                                        } else {
+                                                            $discount = (float) $data['current_bill']['discount'];
+                                                        }
+                                                    }
+                                                $dueDate = isset($data['current_bill']['due_date'])
+                                                            ? \Carbon\Carbon::parse($data['current_bill']['due_date'])
+                                                            : null;
+
+                                                $today = \Carbon\Carbon::today();
+
+                                                $applicablePenalty = ($dueDate && $today->gt($dueDate)) ? $penalty : 0;
+                                            @endphp
                                             <div class="oversized" style="margin: 5px 0 0 0; display: flex; justify-content: space-between; align-items: center;">
                                                 <div style="text-transform: uppercase; font-size: 20px; font-weight: 800;">Amount After Due:</div>
                                                 <div style="text-transform: uppercase; font-size: 20px; font-weight: 800;">
-                                                    {{number_format($data['current_bill']['assumed_amount_after_due'], 2)}}
+                                                    {{
+    (float) $data['current_bill']['amount_after_due'] == 0
+        ? number_format(abs((float) $data['current_bill']['amount'] - (float) $arrears - (float) $totalDiscount + (float) $franchiseTax + $applicablePenalty), 2)
+        : number_format((float) $data['current_bill']['amount_after_due'], 2)
+}}
                                                 </div>
                                             </div>
                                             <div style="margin: 8px 0 5px 0; width: 100%; height: 1px; border-bottom: 1px dashed black;"></div>
@@ -296,9 +318,7 @@
                             @if(!$data['current_bill']['isPaid'])
                                 @php
                                     $amount = (float)($data['current_bill']['amount'] ?? 0);
-                                    $dbPenalty = (float)($data['current_bill']['penalty'] ?? 0);
-                                    $computedPenalty = (float)($data['current_bill']['assumed_penalty'] ?? 0);
-                                    $totalPenalty = $dbPenalty + $computedPenalty;
+                                    $penalty = (float)($data['current_bill']['penalty'] ?? 0);
                                     $currentBill = (float)($data['current_bill']['amount'] ?? 0);
                                     $prevPenalty = (float)($data['current_bill']['penalty'] ?? 0);
                                     $discount = 0;
@@ -317,6 +337,8 @@
 
                                     $applicablePenalty = ($dueDate && $today->gt($dueDate)) ? $penalty : 0;
                                     $advancePayment = (float)($data['current_bill']['advances'] ?? 0);
+                                    $prevUnpaid = (float)($data['current_bill']['previous_unpaid'] ?? 0);
+                                    $tax = (float)($data['current_bill']['tax'] ?? 0);
                                     $hasAdvancePayment = $data['current_bill']['isChangeForAdvancePayment'] ?? false;
                                     $netCurrentBill = max(0, $currentBill - $discount - $advancePayment + $prevPenalty);
                                 @endphp
@@ -324,7 +346,7 @@
                                 <div class="bg-danger d-flex align-items-center justify-content-between mt-4 p-3 text-uppercase fw-bold text-white">
                                     Total Amount Due:
                                     <h3 class="ms-2">
-                                        PHP {{number_format((float) $data['current_bill']['amount'] + (float) $applicablePenalty ?? 0, 2)}}
+                                        PHP {{number_format((float) $data['current_bill']['amount'] - ($discount) - ($advancePayment) + ($applicablePenalty) + $prevUnpaid + $tax ?? 0, 2)}}
                                     </h3>
                                 </div>
                                 <div class="card mt-4">
@@ -362,10 +384,11 @@
                                             $today = \Carbon\Carbon::today();
 
                                             $applicablePenalty = ($dueDate && $today->gt($dueDate)) ? $penalty : 0;
+                                            $prevUnpaid = (float)($data['current_bill']['previous_unpaid'] ?? 0);
 
                                             $netCurrentBill = max(0, $currentBill - $discount - $advancePayment);
 
-                                            $totalDue = $arrears + $netCurrentBill + $applicablePenalty + $tax;
+                                            $totalDue = $arrears + $netCurrentBill + $applicablePenalty + $tax + $prevUnpaid - $discount;
                                         @endphp
 
                                         <!-- Arrears -->
@@ -390,7 +413,7 @@
                                                 <label for="total_charges" class="form-label">Current Billing</label>
                                                  @php
                                                     $current_billing = (float)$data['current_bill']['amount'] - (float) $data['current_bill']['previous_unpaid'];
-                                                    $total_billing = (float)$data['current_bill']['total'];
+                                                    $total_billing = (float)$data['current_bill']['amount'];
                                                     $hasAdvancePayment = $data['current_bill']['isChangeForAdvancePayment'];
                                                     $advancePayment = (float) $data['current_bill']['advances'] ?? 0;
 

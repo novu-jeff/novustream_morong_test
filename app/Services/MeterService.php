@@ -281,8 +281,6 @@ class MeterService {
         return $grouped->values()->all();
     }
 
-
-
     public static function getData(?int $id = null) {
 
         if(!is_null($id)) {
@@ -536,10 +534,29 @@ class MeterService {
             ];
         }
 
+        $other_deductions = $this->paymentBreakdownService::getData();
+        $penalties = $this->paymentBreakdownService::getPenalty();
+
+        if ((empty($other_deductions) || count($other_deductions) === 0)
+            && (empty($penalties) || count($penalties) === 0)) {
+            return [
+                'status' => 'error',
+                'message' => "We've noticed that there are no payment breakdowns or penalties set. Please add first."
+            ];
+        }
+
         if (is_null($concessionaire)) {
             return [
                 'status' => 'error',
                 'message' => "We've noticed that there's no concessionaire with this account no."
+            ];
+        }
+
+        $discounts = PaymentDiscount::all();
+        if ($discounts->isEmpty()) {
+            return [
+                'status' => 'error',
+                'message' => "We've noticed that there are no senior or franchise tax. Please add first."
             ];
         }
 
