@@ -756,7 +756,6 @@ class ReadingController extends Controller
                 : round($baseAmount * floatval($franchiseTax->amount), 2);
 
             $bill->tax = $franchiseAmount;
-            $bill->amount += $franchiseAmount;
         }
 
         // 3. Update bill totals

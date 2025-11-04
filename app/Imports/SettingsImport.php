@@ -3,6 +3,7 @@
 namespace App\Imports;
 
 use App\Models\Ruling;
+use App\Models\PaymentBreakdownPenalty;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Concerns\ToCollection;
@@ -65,7 +66,19 @@ class SettingsImport implements ToCollection, WithStartRow, SkipsEmptyRows, Skip
             $this->rowCounter = count($data);
 
             if (!empty($data)) {
+                // Update the RULING table
                 Ruling::updateOrCreate(['id' => 1], $data);
+
+                // Add or update the Penalty Percentage setting
+                if (isset($data['penalty_percent'])) {
+                    PaymentBreakdownPenalty::updateOrCreate(
+                        ['due_from' => 1, 'due_to' => 30],
+                        [
+                            'amount_type' => 'percentage',
+                            'amount' => $data['penalty_percent']
+                        ]
+                    );
+                }
             }
 
         } catch (\Exception $e) {

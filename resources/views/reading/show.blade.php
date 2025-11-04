@@ -216,13 +216,13 @@
                         <div class="oversized" style="display: flex; justify-content: space-between; margin: 5px 0 5px 0;">
                             <div style="font-size: 20px; font-weight: 800; text-transform: uppercase">Current Billing:</div>
                             <div style="font-size: 20px; font-weight: 800; text-transform: uppercase">
-                                {{ number_format(abs((float) $data['current_bill']['total'] - (float) $arrears - (float) $totalDiscount + (float) $franchiseTax), 2) }}
+                                {{ number_format(abs((float) $data['current_bill']['amount']), 2) }}
                             </div>
                         </div>
                         <div style="margin: 5px 0 5px 0; width: 100%; height: 1px; border-bottom: 1px dashed black;"></div>
                         <div class="oversized" style="display: flex; justify-content: space-between; align-items: center;">
                             <div style="text-transform: uppercase; font-size: 20px; font-weight: 800;">Amount Due:</div>
-                            <div style="text-transform: uppercase; font-size: 20px; font-weight: 800;">{{number_format($data['current_bill']['amount'], 2)}} </div>
+                            <div style="text-transform: uppercase; font-size: 20px; font-weight: 800;">{{ number_format(abs((float) $data['current_bill']['total'] - (float) $arrears - (float) $totalDiscount + (float) $franchiseTax), 2) }}  </div>
                         </div>
                         <div style="margin: 5px 0 0 0; display: flex; justify-content: space-between; align-items: center;">
                             <div style="text-transform: uppercase;">Payment After Due Date</div>

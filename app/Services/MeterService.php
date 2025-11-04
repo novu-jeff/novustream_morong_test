@@ -552,6 +552,14 @@ class MeterService {
             ];
         }
 
+        $discounts = PaymentDiscount::all();
+        if ($discounts->isEmpty()) {
+            return [
+                'status' => 'error',
+                'message' => "We've noticed that there are no senior or franchise tax. Please add first."
+            ];
+        }
+
         $reference_no = $payload['reference_no'];
         $reread_bill = Bill::with('reading')->where('reference_no', $reference_no)->first();
         if (!empty($payload['isReRead'])) {
