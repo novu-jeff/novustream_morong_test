@@ -25,6 +25,7 @@ use App\Models\BillDiscount;
 use App\Models\Discount;
 use App\Models\DiscountType;
 use App\Models\PaymentBreakdownPenalty;
+use App\Models\GlobalRuling;
 
 
 class ReadingController extends Controller
@@ -62,62 +63,76 @@ class ReadingController extends Controller
         $this->isTesting = env('IS_TEST_READING');
     }
 
-    public function index(Request $request) {
-    if ($request->ajax()) {
-        $payload = $request->all();
+    public function index(Request $request)
+    {
+        if ($request->ajax()) {
+            $payload = $request->all();
+            $user = auth()->user();
 
-        $user = auth()->user();
-        if ($user->user_type === 'technician') {
-            // zone_assigned = "2,3,5"
-            $assignedZoneIds = explode(',', $user->zone_assigned);
+            if ($user->user_type === 'technician') {
+                $rawZoneAssigned = $user->zone_assigned;
+                $assignedZoneTokens = array_filter(array_map('trim', explode(',', $rawZoneAssigned)));
 
-            // Convert IDs to zone codes (e.g. 2 -> "021")
-            $assignedZones = Zones::whereIn('id', $assignedZoneIds)->pluck('zone')->toArray();
-            $payload['zones'] = $assignedZones;
+                $assignedZoneNames = [];
+                foreach ($assignedZoneTokens as $token) {
+                    if (str_contains($token, '-')) {
+                        [$mainZone, $book] = explode('-', $token);
+                        $zoneName = "ZONE {$mainZone} BOOK {$book}";
+                    } else {
+                        $zoneName = "ZONE {$token}";
+                    }
+                    $assignedZoneNames[] = $zoneName;
+                }
 
-            if (!empty($payload['zone']) && strtolower($payload['zone']) !== 'all') {
-                if (in_array($payload['zone'], $assignedZones)) {
-                    $payload['zones'] = [$payload['zone']];
-                } else {
-                    $payload['zones'] = [];
+                $assignedZones = Zones::whereIn('zone', $assignedZoneNames)->pluck('zone')->toArray();
+
+                usort($assignedZones, function ($a, $b) {
+                    preg_match('/ZONE (\d+)/', $a, $ma);
+                    preg_match('/ZONE (\d+)/', $b, $mb);
+                    $numA = (int)($ma[1] ?? 0);
+                    $numB = (int)($mb[1] ?? 0);
+                    return $numA <=> $numB;
+                });
+
+                $payload['zones'] = $assignedZones;
+
+                if (!empty($payload['zone']) && strtolower($payload['zone']) !== 'all') {
+                    if (in_array($payload['zone'], $assignedZones)) {
+                        $payload['zones'] = [$payload['zone']];
+                    } else {
+                        $payload['zones'] = [];
+                    }
                 }
             }
-        }
 
-
-        if (isset($payload['isGetPrevious']) && $payload['isGetPrevious'] == true) {
-            try {
-                $response = $this->meterService->getPreviousReading($payload['account_no']);
-                return response()->json($response);
-            } catch (\Exception $e) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Unable to get previous reading.'
-                ], 500);
+            if (isset($payload['isGetPrevious']) && $payload['isGetPrevious'] == true) {
+                try {
+                    $response = $this->meterService->getPreviousReading($payload['account_no']);
+                    return response()->json($response);
+                } catch (\Exception $e) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'Unable to get previous reading.'
+                    ], 500);
+                }
             }
+
+            if (isset($payload['isReRead']) && $payload['isReRead'] == 'true') {
+                return response()->json($this->meterService->getReRead($payload['reference_no']));
+            }
+
+            if (isset($payload['isGetRecentReading']) && $payload['isGetRecentReading'] == true) {
+                return response()->json(session('recent_reading') ?? null);
+            }
+
+            if (isset($payload['isGetReadUnread']) && $payload['isGetReadUnread'] == true) {
+                return response()->json($this->meterService->getReadUnread($payload['targetDate']));
+            }
+
+            return response()->json($this->meterService->filterAccount($payload));
         }
 
-
-        if(isset($payload['isReRead']) && $payload['isReRead'] == 'true') {
-            $response = $this->meterService->getReRead($payload['reference_no']);
-            return response()->json($response);
-        }
-
-        if(isset($payload['isGetRecentReading']) && $payload['isGetRecentReading'] == true) {
-            $response = session('recent_reading') ?? null;
-            return response()->json($response);
-        }
-
-        if(isset($payload['isGetReadUnread']) && $payload['isGetReadUnread'] == true) {
-            $response = $this->meterService->getReadUnread($payload['targetDate']);
-            return response()->json($response);
-        }
-
-        $response = $this->meterService->filterAccount($payload);
-        return response()->json($response);
-        }
-
-        $isReRead = !empty($request->input('re-read')) && !empty($request->input('reference_no')) ? true : false;
+        $isReRead = !empty($request->input('re-read')) && !empty($request->input('reference_no'));
         $reference_no = $request->input('reference_no') ?? null;
 
         if ($isReRead) {
@@ -131,19 +146,40 @@ class ReadingController extends Controller
 
         if ($user->user_type === 'technician') {
             if (empty($user->zone_assigned)) {
-                // Treat as admin if no zones assigned
                 $zones = Zones::all();
                 $showAllOption = true;
             } else {
-                $assignedZoneIds = explode(',', $user->zone_assigned);
-                $zones = Zones::whereIn('id', $assignedZoneIds)->get();
+                $rawZoneAssigned = $user->zone_assigned;
+                $assignedZoneTokens = array_filter(array_map('trim', explode(',', $rawZoneAssigned)));
+
+                $assignedZoneNames = [];
+                foreach ($assignedZoneTokens as $token) {
+                    if (str_contains($token, '-')) {
+                        [$mainZone, $book] = explode('-', $token);
+                        $zoneName = "ZONE {$mainZone} BOOK {$book}";
+                    } else {
+                        $zoneName = "ZONE {$token}";
+                    }
+                    $assignedZoneNames[] = $zoneName;
+                }
+
+                $zones = Zones::whereIn('zone', $assignedZoneNames)->get();
+
+                $zones = $zones->sortBy(function ($zone) {
+                    preg_match('/ZONE (\d+)/', $zone->zone, $match);
+                    return (int)($match[1] ?? 0);
+                })->values();
+
                 $showAllOption = false;
             }
         } else {
-            $zones = Zones::all();
+            $zones = Zones::all()->sortBy(function ($zone) {
+                preg_match('/ZONE (\d+)/', $zone->zone, $match);
+                return (int)($match[1] ?? 0);
+            })->values();
+
             $showAllOption = true;
         }
-
 
         return view('reading.index', [
             'isReRead' => $isReRead,
@@ -151,11 +187,100 @@ class ReadingController extends Controller
             'zones' => $zones,
             'showAllOption' => $showAllOption,
         ]);
-
     }
 
 
     public function show(string $reference_no)
+    {
+        $data = $this->meterService::getBill($reference_no);
+
+        if (isset($data['status']) && $data['status'] == 'error') {
+            if (empty($data['client']['account_no'])) {
+                return redirect()->back()->with('alert', [
+                    'status' => 'error',
+                    'message' => 'No concessionaire found'
+                ]);
+            }
+
+            return redirect()->route('reading.index')->with('alert', [
+                'status' => 'error',
+                'message' => 'Bill Not Found'
+            ]);
+        }
+
+        // Get base amount from bill
+        $amount = (float)($data['current_bill']['amount'] ?? 0);
+        $discount = (float)($data['current_bill']['discount'] ?? 0);
+
+        // Get today's penalty config
+        $currentDay = now()->day;
+
+        $penaltyEntry = \App\Models\PaymentBreakdownPenalty::where('due_from', '<=', $currentDay)
+            ->where('due_to', '>=', $currentDay)
+            ->first();
+
+        $assumed_penalty = 0;
+
+        if ($penaltyEntry) {
+            $penaltyBase = $amount - $discount;
+
+            if ($penaltyEntry->amount_type === 'percentage') {
+                $assumed_penalty = $penaltyBase * floatval($penaltyEntry->amount);
+            } elseif ($penaltyEntry->amount_type === 'fixed') {
+                $assumed_penalty = floatval($penaltyEntry->amount);
+            }
+        } else {
+            // fallback penalty if no match
+            $assumed_penalty = $amount * 0.20;
+        }
+
+        $assumed_amount_after_due = $amount + $assumed_penalty;
+
+        // Append to data array for Blade
+        $data['current_bill']['assumed_penalty'] = $assumed_penalty;
+        $data['current_bill']['assumed_amount_after_due'] = $assumed_amount_after_due;
+
+        // 💰 Add service fees (same as pay())
+        $hitpay_fee = 20;
+        $novupay_fee = 10;
+        $additional_service_fee = $hitpay_fee + $novupay_fee;
+
+        $final_amount = $assumed_amount_after_due + $additional_service_fee;
+
+        // 🧾 Build payment payload
+        $paymentPayload = [
+            'reference_no' => $reference_no,
+            'amount' => $final_amount,
+            'customer' => [
+                'name' => $data['client']['name'] ?? '',
+                'account_no' => $data['client']['account_no'] ?? '',
+                'address' => $data['client']['address'] ?? '',
+            ],
+        ];
+
+        // 🧩 Generate HitPay checkout URL (your logic)
+        $hitpayData = app(\App\Http\Controllers\PaymentController::class)
+            ->createHitpayPaymentRequest($reference_no, $paymentPayload);
+
+        if ($hitpayData && !empty($hitpayData['url'])) {
+            $url = $hitpayData['url']; // ✅ HitPay checkout link
+        } else {
+            $url = env('NOVUPAY_URL') . '/payment/merchants/' . $reference_no;
+        }
+
+        // 🧾 Generate QR code (HitPay or fallback NovuPay)
+        $qr_code = $this->generateService::qr_code($url, 80);
+
+        // 🔹 Reread status
+        $isReRead = [
+            'status' => $data['current_bill']['reading']['isReRead'] ?? false,
+            'reference_no' => $data['current_bill']['reading']['reread_reference_no'] ?? null,
+        ];
+
+        return view('reading.show', compact('data', 'isReRead', 'reference_no', 'qr_code'));
+    }
+
+    public function orShow(string $reference_no)
     {
         $data = $this->meterService::getBill($reference_no);
 
@@ -210,8 +335,7 @@ class ReadingController extends Controller
         $novupay_fee = 10;
         $additional_service_fee = $hitpay_fee + $novupay_fee;
 
-        $final_amount = $amount + $additional_service_fee;
-        $final_amount_with_penalty = $assumed_amount_after_due + $additional_service_fee;
+        $final_amount = $assumed_amount_after_due + $additional_service_fee;
 
         // 🧾 Build payment payload
         $paymentPayload = [
@@ -224,20 +348,14 @@ class ReadingController extends Controller
             ],
         ];
 
-
         // 🧩 Generate HitPay checkout URL (your logic)
         $hitpayData = app(\App\Http\Controllers\PaymentController::class)
             ->createHitpayPaymentRequest($reference_no, $paymentPayload);
-        // dd($reference_no, $paymentPayload);
-        // dd($hitpayData);
-
-         // 🔗 Determine payment URL (HitPay or fallback NovuPay)
 
         if ($hitpayData && !empty($hitpayData['url'])) {
             $url = $hitpayData['url']; // ✅ HitPay checkout link
         } else {
-            // $url = env('NOVUPAY_URL') . '/payment/merchants/' . $reference_no;
-            $url = 'https://staritawaterdistrictpamp.gov.ph/'; // ✅ Fallback NovuPay link (temporary)
+            $url = env('NOVUPAY_URL') . '/payment/merchants/' . $reference_no;
         }
 
         // 🧾 Generate QR code (HitPay or fallback NovuPay)
@@ -249,10 +367,97 @@ class ReadingController extends Controller
             'reference_no' => $data['current_bill']['reading']['reread_reference_no'] ?? null,
         ];
 
-        return view('reading.show', compact('data', 'isReRead', 'reference_no', 'qr_code'));
+        return view('reading.orshow', compact('data', 'isReRead', 'reference_no', 'qr_code'));
     }
 
+     public function invoice(string $reference_no)
+    {
+        $data = $this->meterService::getBill($reference_no);
 
+        if (isset($data['status']) && $data['status'] == 'error') {
+            if (empty($data['client']['account_no'])) {
+                return redirect()->back()->with('alert', [
+                    'status' => 'error',
+                    'message' => 'No concessionaire found'
+                ]);
+            }
+
+            return redirect()->route('reading.index')->with('alert', [
+                'status' => 'error',
+                'message' => 'Bill Not Found'
+            ]);
+        }
+
+        // Get base amount from bill
+        $amount = (float)($data['current_bill']['amount'] ?? 0);
+        $discount = (float)($data['current_bill']['discount'] ?? 0);
+
+        // Get today's penalty config
+        $currentDay = now()->day;
+
+        $penaltyEntry = \App\Models\PaymentBreakdownPenalty::where('due_from', '<=', $currentDay)
+            ->where('due_to', '>=', $currentDay)
+            ->first();
+
+        $assumed_penalty = 0;
+
+        if ($penaltyEntry) {
+            $penaltyBase = $amount - $discount;
+
+            if ($penaltyEntry->amount_type === 'percentage') {
+                $assumed_penalty = $penaltyBase * floatval($penaltyEntry->amount);
+            } elseif ($penaltyEntry->amount_type === 'fixed') {
+                $assumed_penalty = floatval($penaltyEntry->amount);
+            }
+        } else {
+            // fallback penalty if no match
+            $assumed_penalty = $amount * 0.15;
+        }
+
+        $assumed_amount_after_due = $amount + $assumed_penalty;
+
+        // Append to data array for Blade
+        $data['current_bill']['assumed_penalty'] = $assumed_penalty;
+        $data['current_bill']['assumed_amount_after_due'] = $assumed_amount_after_due;
+
+        // 💰 Add service fees (same as pay())
+        $hitpay_fee = 20;
+        $novupay_fee = 10;
+        $additional_service_fee = $hitpay_fee + $novupay_fee;
+
+        $final_amount = $assumed_amount_after_due + $additional_service_fee;
+
+        // 🧾 Build payment payload
+        $paymentPayload = [
+            'reference_no' => $reference_no,
+            'amount' => $final_amount,
+            'customer' => [
+                'name' => $data['client']['name'] ?? '',
+                'account_no' => $data['client']['account_no'] ?? '',
+                'address' => $data['client']['address'] ?? '',
+            ],
+        ];
+
+        // 🧩 Generate HitPay checkout URL (your logic)
+        $hitpayData = app(\App\Http\Controllers\PaymentController::class)
+            ->createHitpayPaymentRequest($reference_no, $paymentPayload);
+
+        if ($hitpayData && !empty($hitpayData['url'])) {
+            $url = $hitpayData['url']; // ✅ HitPay checkout link
+        } else {
+            $url = env('NOVUPAY_URL') . '/payment/merchants/' . $reference_no;
+        }
+
+        // 🧾 Generate QR code (HitPay or fallback NovuPay)
+        $qr_code = $this->generateService::qr_code($url, 80);
+
+        $isReRead = [
+            'status' => $data['current_bill']['reading']['isReRead'] ?? false,
+            'reference_no' => $data['current_bill']['reading']['reread_reference_no'] ?? null,
+        ];
+
+        return view('reading.invoice', compact('data', 'isReRead', 'reference_no', 'qr_code'));
+    }
 
     public function report(Request $request)
     {
@@ -264,7 +469,6 @@ class ReadingController extends Controller
 
         $zonesQuery = DB::table('concessioner_accounts');
 
-        // Restrict zones if user is a technician
         if ($user->user_type === 'technician' && !empty($user->zone_assigned)) {
             $assignedZoneIds = explode(',', $user->zone_assigned);
             $assignedZones = Zones::whereIn('id', $assignedZoneIds)->pluck('zone')->toArray();
@@ -290,13 +494,23 @@ class ReadingController extends Controller
             ->groupBy('concessioner_accounts.zone')
             ->pluck('read_count', 'zone');
 
-        $zoneAreas = DB::table('zones')->pluck('area', 'zone');
+        $zoneAreas = DB::table('concessioner_accounts')
+            ->leftJoin('zones', function ($join) {
+                $join->on(DB::raw("REPLACE(UPPER(zones.zone), ',', '')"), '=', DB::raw("REPLACE(UPPER(concessioner_accounts.zone), ',', '')"));
+            })
+            ->select('concessioner_accounts.zone', 'zones.area')
+            ->distinct()
+            ->pluck('area', 'zone');
 
         $zones = $zonesRaw->map(function ($zone) use ($readingsPerZone, $zoneAreas) {
             $zone->read_count = $readingsPerZone[$zone->zone] ?? 0;
             $zone->area = $zoneAreas[$zone->zone] ?? 'Unknown';
             return $zone;
-        })->sortBy('zone')->values();
+        })->sortBy(function ($zone) {
+            preg_match('/\d+/', $zone->zone, $matches);
+            return isset($matches[0]) ? (int) $matches[0] : 0;
+        })->values();
+
 
         $collection = collect($this->meterService::getReport($zone, $date, $toSearch))->flatten(2);
 
@@ -417,7 +631,7 @@ class ReadingController extends Controller
 
     try {
         $account = $this->meterService->getAccount($account_no);
-
+        $zone = $account->zone ?? null;
         $present_reading = $payload['present_reading'];
         $previous_reading = $payload['previous_reading'];
         $consumption = $present_reading - $previous_reading;
@@ -426,13 +640,13 @@ class ReadingController extends Controller
             throw new \Exception('Present reading must be greater than or equal to previous reading.');
         }
 
-$propertyTypeId = DB::table('property_types')
-    ->whereRaw("
-        LOWER(REPLACE(REPLACE(name, '''', ''), '\"', '')) = ?
-    ", [
-        strtolower(str_replace(['"', "'"], '', $account->property_type))
-    ])
-    ->value('id');
+        $propertyTypeId = DB::table('property_types')
+            ->whereRaw("
+                LOWER(REPLACE(REPLACE(name, '''', ''), '\"', '')) = ?
+            ", [
+                strtolower(str_replace(['"', "'"], '', $account->property_type))
+            ])
+            ->value('id');
 
 
         if (!$propertyTypeId) {
@@ -461,7 +675,7 @@ $propertyTypeId = DB::table('property_types')
 
         $billData = $computed['bill'];
         $reference_no = $billData['reference_no'];
-        $amount = $billData['amount'];
+        $amount = $billData['total'];
 
         $basicCharge = $computed['basic_charge'];
         $totalAmount = $computed['bill']['amount'];
@@ -478,16 +692,6 @@ $propertyTypeId = DB::table('property_types')
 
         $penaltyAmount = 0;
 
-        if ($penaltyEntry) {
-            $penaltyBase = $amount - ($computed['bill']['discount'] ?? 0);
-
-            if ($penaltyEntry->amount_type === 'percentage') {
-                $penaltyAmount = $penaltyBase * floatval($penaltyEntry->amount);
-            } elseif ($penaltyEntry->amount_type === 'fixed') {
-                $penaltyAmount = floatval($penaltyEntry->amount);
-            }
-        }
-
         // Save bill
         $bill = Bill::updateOrCreate(
             ['reference_no' => $reference_no],
@@ -503,11 +707,10 @@ $propertyTypeId = DB::table('property_types')
 
         $today = Carbon::today();
 
-        $discountRecord = Discount::where('account_no', $account->account_no)
-            // ->whereDate('effective_date', '<=', $today)
-            // ->whereDate('expired_date', '>=', $today)
-            ->first();
-
+        // $discountRecord = Discount::where('account_no', $account->account_no)
+        //     // ->whereDate('effective_date', '<=', $today)
+        //     // ->whereDate('expired_date', '>=', $today)
+        //     ->first();
         $hardcodedDiscounts = [
             '011-22-011450' => 0.02, // 2%
             '091-22-092230' => 0.05, // 5%
@@ -523,7 +726,7 @@ $propertyTypeId = DB::table('property_types')
 
             BillDiscount::create([
                 'bill_id' => $bill->id,
-                'name' => 'Franchise Tax',
+                'name' => 'Hardcoded Discount',
                 'description' => ($discountRate * 100) . '%',
                 'amount' => $hardcodedAmount,
             ]);
@@ -531,17 +734,15 @@ $propertyTypeId = DB::table('property_types')
             $totalDiscount += $hardcodedAmount;
         }
 
-        $ruling = DB::table('global_ruling')->first();
-        $consumptionLimit = $ruling->snr_dc_rule ?? 0;
-
-        if ($discountRecord && $discountRecord->discount_type_id) {
+        if ($discountRecord) {
+            $seniorDiscount = PaymentDiscount::where('eligible', 'senior')->first();
+            $ruling = DB::table('global_ruling')->first();
+            $consumptionLimit = $ruling->snr_dc_rule ?? 0; // Default to 0 if not set
 
             // Only apply senior discount if consumption <= snr_dc_rule
             if ($discountRecord->discount_type_id == 1 && $consumption <= $consumptionLimit) {
-                $seniorDiscount = PaymentDiscount::where('eligible', 'senior')->first();
-
                 if ($seniorDiscount) {
-                    $baseAmount = $seniorDiscount->percentage_of === 'basic_charge' ? $basicCharge : $totalAmount;
+                    $baseAmount = $seniorDiscount->percentage_of === 'basic_charge' ? $basicCharge : $bill->amount;
 
                     $seniorAmount = $seniorDiscount->type === 'fixed'
                         ? round(floatval($seniorDiscount->amount), 2)
@@ -557,37 +758,43 @@ $propertyTypeId = DB::table('property_types')
                     $totalDiscount += $seniorAmount;
                 }
             }
-
-            // Franchise Discount
-            if ($discountRecord->discount_type_id == 2) {
-                $franchiseDiscount = PaymentDiscount::where('eligible', 'franchise')->first();
-
-                if ($franchiseDiscount) {
-                    $baseAmount = $franchiseDiscount->percentage_of === 'basic_charge' ? $basicCharge : $totalAmount;
-
-                    $franchiseAmount = $franchiseDiscount->type === 'fixed'
-                        ? round(floatval($franchiseDiscount->amount), 2)
-                        : round($baseAmount * floatval($franchiseDiscount->amount), 2);
-
-                    BillDiscount::create([
-                        'bill_id' => $bill->id,
-                        'name' => $franchiseDiscount->name,
-                        'description' => $franchiseDiscount->type ?? null,
-                        'amount' => $franchiseAmount,
-                    ]);
-
-                    $totalDiscount += $franchiseAmount;
-
-                }
-            }
-
         }
 
-        $bill->update([
-            'discount' => $totalDiscount,
-            'amount_after_due' => $bill->amount + $penaltyAmount
-        ]);
+        // 2. Always apply franchise tax
+        $franchiseTax = PaymentDiscount::where('eligible', 'franchise')->first();
+        if ($franchiseTax) {
+            $baseAmount = $franchiseTax->percentage_of === 'basic_charge' ? $basicCharge : $bill->amount;
+            $franchiseAmount = $franchiseTax->type === 'fixed'
+                ? round(floatval($franchiseTax->amount), 2)
+                : round($baseAmount * floatval($franchiseTax->amount), 2);
 
+            $bill->tax = $franchiseAmount;
+        }
+
+        $total = $billData['total'];
+        $prevUnpaid = $billData['previous_unpaid'];
+        $discounted = $totalDiscount;
+
+        $totalAmountPenalty = $total - $discounted - $prevUnpaid;
+
+        if ($penaltyEntry) {
+            $penaltyBase = ($totalAmountPenalty ?? 0 );
+
+            if ($penaltyEntry->amount_type === 'percentage') {
+                $penaltyAmount = $penaltyBase * floatval($penaltyEntry->amount);
+            } elseif ($penaltyEntry->amount_type === 'fixed') {
+                $penaltyAmount = floatval($penaltyEntry->amount);
+            }
+        }
+
+        // 3. Update bill totals
+        $bill->update([
+            'amount' => $amount + $penaltyAmount,
+            'penalty' => $penaltyAmount,
+            'discount' => $totalDiscount,
+            'amount_after_due' => $bill->amount + $penaltyAmount,
+            'tax' => $franchiseAmount ?? 0,
+        ]);
 
         // Generate payment QR
         $paymentPayload = [

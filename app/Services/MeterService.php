@@ -75,17 +75,14 @@ class MeterService {
     public function filterAccount(array $filter) {
         $query = UserAccounts::with('user');
 
+        // Zone filter updated to use the 'zone' column instead of account_no
         if (!empty($filter['zones']) && is_array($filter['zones'])) {
-            $query->where(function ($q) use ($filter) {
-                foreach ($filter['zones'] as $zone) {
-                    $q->orWhere('account_no', 'like', $zone . '%');
-                }
-            });
-        }
-        elseif (!empty($filter['zone']) && strtolower($filter['zone']) !== 'all') {
-            $query->where('account_no', 'like', $filter['zone'] . '%');
+            $query->whereIn('zone', $filter['zones']);
+        } elseif (!empty($filter['zone']) && strtolower($filter['zone']) !== 'all') {
+            $query->where('zone', $filter['zone']);
         }
 
+        // Search filter remains the same
         if (!empty($filter['search_by'])) {
             switch ($filter['search_by']) {
                 case 'all':
@@ -143,6 +140,7 @@ class MeterService {
             'data' => $data
         ];
     }
+
 
 
     public function getPreviousReading($account_no) {
@@ -283,8 +281,6 @@ class MeterService {
         return $grouped->values()->all();
     }
 
-
-
     public static function getData(?int $id = null) {
 
         if(!is_null($id)) {
@@ -300,9 +296,8 @@ class MeterService {
     {
         $isPaid = $filter === 'paid';
 
-        $bills = Bill::with(['reading', 'client']) // Include client relationship
-            ->where('isPaid', $isPaid)
-            ->whereHas('reading', function ($query) use ($zone, $date) {
+        $bills = Bill::with('reading')
+            ->whereHas('reading', function ($query) use ($zone, $date, $search) {
                 $query->where('isReRead', false);
 
                 if (!empty($zone) && $zone !== 'all') {
@@ -314,15 +309,12 @@ class MeterService {
                     $query->whereYear('created_at', $year)
                         ->whereMonth('created_at', $month);
                 }
+
+                if (!empty($search)) {
+                    $query->where('account_no', 'like', "%$search%");
+                }
             })
-            ->when(!empty($search), function ($query) use ($search) {
-                $query->where(function ($q) use ($search) {
-                    $q->whereHas('reading', fn ($sub) => $sub->where('account_no', 'like', "%$search%"))
-                    ->orWhereHas('reading.concessionaire.user', fn ($sub) =>
-                        $sub->where('name', 'like', "%$search%")
-                    );
-                });
-            })
+            ->where('isPaid', $isPaid)
             ->get();
 
         if ($zone === 'all') {
@@ -353,6 +345,7 @@ class MeterService {
 
         return $grouped[0] ?? [];
     }
+
 
 
     public function locate(array $payload) {
@@ -552,18 +545,18 @@ class MeterService {
             ];
         }
 
-        $discounts = PaymentDiscount::all();
-        if ($discounts->isEmpty()) {
-            return [
-                'status' => 'error',
-                'message' => "We've noticed that there are no senior or franchise discounts. Please add first."
-            ];
-        }
-
         if (is_null($concessionaire)) {
             return [
                 'status' => 'error',
                 'message' => "We've noticed that there's no concessionaire with this account no."
+            ];
+        }
+
+        $discounts = PaymentDiscount::all();
+        if ($discounts->isEmpty()) {
+            return [
+                'status' => 'error',
+                'message' => "We've noticed that there are no senior or franchise tax. Please add first."
             ];
         }
 
@@ -746,7 +739,7 @@ class MeterService {
         $isHighConsumption = $payload['is_high_consumption'] == 'yes';
 
         $reading = [
-            'zone' => explode('-', $payload['account_no'])[0] ?? null,
+            'zone' => $concessionaire->zone ?? null,
             'account_no' => $payload['account_no'],
             'previous_reading' => $previous_reading,
             'present_reading' => $payload['present_reading'],
@@ -869,20 +862,20 @@ class MeterService {
         return $result->toArray();
     }
 
-    private function generateReferenceNo()
-    {
-        $prefix = env('REF_PREFIX', 'NST-STA');
-        $technicianId = auth()->id() ?? '0';
+    private function generateReferenceNo() {
+
+        $prefix = env('REF_PREFIX');
 
         do {
             $time = time();
-            $combined = "{$prefix}-0{$technicianId}-{$time}";
-
-            $exists = Bill::where('reference_no', $combined)->exists();
+            $combined = $prefix . '-' . $time;
+            $exists = Bill::where('reference_no', $combined)
+                ->exists();
 
             if ($exists) {
                 sleep(1);
             }
+
         } while ($exists);
 
         return $combined;

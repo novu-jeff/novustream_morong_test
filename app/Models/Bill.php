@@ -19,6 +19,7 @@ class Bill extends Model
         'previous_unpaid',
         'total',
         'discount',
+        'tax',
         'penalty',
         'amount',
         'amount_after_due',

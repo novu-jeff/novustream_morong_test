@@ -14,6 +14,7 @@ use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
+use Maatwebsite\Excel\Concerns\WithCalculatedFormulas; // ✅ added to evaluate Excel formulas
 
 class ConcessionaireImport implements
     ToModel,
@@ -21,20 +22,23 @@ class ConcessionaireImport implements
     WithValidation,
     SkipsEmptyRows,
     SkipsOnFailure,
-    WithChunkReading
+    WithChunkReading,
+    WithCalculatedFormulas // ✅ evaluates Excel formulas before reading
 {
     use SkipsFailures;
 
     protected $skippedRows = [];
     protected $rowCounter = 3;
 
+    /**
+     * Validation rules
+     */
     public function rules(): array
     {
         return [
             'account_no' => [
                 'required',
                 function ($attribute, $value, $fail) {
-                    // sanitize first to ensure consistency
                     $accountNo = $this->sanitizeAccountNo($value);
                     if (
                         $accountNo &&
@@ -45,6 +49,7 @@ class ConcessionaireImport implements
                 }
             ],
             'name' => ['required'],
+            'zone' => ['required'],
         ];
     }
 
@@ -62,9 +67,8 @@ class ConcessionaireImport implements
         $row = array_map('trim', $row);
 
         try {
-            // sanitize account number and extract zone
             $accountNo = $this->sanitizeAccountNo($row['account_no'] ?? null);
-            $zone      = $this->extractZone($accountNo);
+            $zone      = $row['zone'] ?? null;
 
             $user = User::create([
                 'name'       => $row['name'],
@@ -75,13 +79,14 @@ class ConcessionaireImport implements
                 $property_type  = $this->getPropertyType($row['rate_code']);
                 $date_connected = $this->parseDate($row['date_connected'] ?? null);
 
+                // Create linked user account
                 UserAccounts::create([
                     'user_id'         => $user->id,
-                    'zone'            => $zone,
+                    'zone'            => $zone, // ✅ direct from Excel
                     'account_no'      => $accountNo,
                     'address'         => $row['address'] ?? null,
                     'property_type'   => $property_type,
-                    'rate_code'       => $row['rate_code'] ?? null,
+                    'rate_code'       => $this->formatRateCode($row['rate_code'] ?? null),
                     'status'          => $row['status'] ?? null,
                     'meter_brand'     => $row['meter_brand'] ?? null,
                     'meter_serial_no' => $row['meter_serial_no'] ?? null,
@@ -102,50 +107,28 @@ class ConcessionaireImport implements
         }
     }
 
-
-    public function validateRow(array $row, $index)
-    {
-        if ($this->isRowEmpty($row)) {
-            return true;
-        }
-        return null;
-    }
-
     protected function sanitizeAccountNo(?string $accountNo): ?string
     {
-        if (!$accountNo) {
-            return null;
-        }
+        if (!$accountNo) return null;
 
         $accountNo = trim($accountNo);
-
-        // If PhpSpreadsheet gave us a formula string, ignore it
-        if (str_starts_with($accountNo, '=')) {
-            return null;
-        }
-
+        if (str_starts_with($accountNo, '=')) return null;
         return $accountNo;
     }
 
-    protected function extractZone(?string $accountNo): ?string
+    protected function formatRateCode($rateCode): ?string
     {
-        if (!$accountNo) {
+        if (is_null($rateCode) || $rateCode === '') {
             return null;
         }
 
-        // Always take first 3 digits if present
-        if (preg_match('/^\d{3}/', $accountNo, $matches)) {
-            return $matches[0];
-        }
-
-        return null;
+        $rateCode = (int) $rateCode;
+        return str_pad($rateCode, 2, '0', STR_PAD_LEFT);
     }
 
     protected function parseDate($value): ?string
     {
-        if (!$value) {
-            return null;
-        }
+        if (!$value) return null;
 
         if (is_numeric($value)) {
             return Carbon::instance(
@@ -159,20 +142,80 @@ class ConcessionaireImport implements
             : null;
     }
 
+    /**
+     * Property type mapping (keep your full version)
+     */
     public function getPropertyType($rate_code)
     {
         $types = [
-            12 => 'Residential 1/2"',
-            22 => 'Government 1/2"',
-            32 => 'Commercial & Industrial 1/2"',
-            42 => 'Commercial C 1/2"',
-            52 => 'Commercial B 1/2"',
-            62 => 'Commercial A 1/2"',
+            1  => 'Residential/Government 1/2"',
+            2  => 'Residential/Government 3/4"',
+            3  => 'Residential/Government 1"',
+            4  => 'Residential/Government 1 1/2"',
+            5  => 'Residential/Government 2"',
+            6  => 'Residential/Government 3"',
+            7  => 'Residential/Government 4"',
+            8  => 'Residential/Government 6"',
+            9  => 'Residential/Government 8"',
+            10 => 'Residential/Government 10"',
+            11 => 'Commercial/Industrial 1/2"',
+            12 => 'Commercial/Industrial 3/4"',
+            13 => 'Commercial/Industrial 1"',
+            14 => 'Commercial/Industrial 1 1/2"',
+            15 => 'Commercial/Industrial 2"',
+            16 => 'Commercial/Industrial 3"',
+            17 => 'Commercial/Industrial 4"',
+            18 => 'Commercial/Industrial 6"',
+            19 => 'Commercial/Industrial 8"',
+            20 => 'Commercial/Industrial 10"',
+            21 => 'Commercial A 1/2"',
+            22 => 'Commercial A 3/4"',
+            23 => 'Commercial A 1"',
+            24 => 'Commercial A 1 1/2"',
+            25 => 'Commercial A 2"',
+            26 => 'Commercial A 3"',
+            27 => 'Commercial A 4"',
+            28 => 'Commercial A 6"',
+            29 => 'Commercial A 8"',
+            30 => 'Commercial A 10"',
+            31 => 'Commercial B 1/2"',
+            32 => 'Commercial B 3/4"',
+            33 => 'Commercial B 1"',
+            34 => 'Commercial B 1 1/2"',
+            35 => 'Commercial B 2"',
+            36 => 'Commercial B 3"',
+            37 => 'Commercial B 4"',
+            38 => 'Commercial B 6"',
+            39 => 'Commercial B 8"',
+            40 => 'Commercial B 10"',
+            41 => 'Commercial C 1/2"',
+            42 => 'Commercial C 3/4"',
+            43 => 'Commercial C 1"',
+            44 => 'Commercial C 1 1/2"',
+            45 => 'Commercial C 2"',
+            46 => 'Commercial C 3"',
+            47 => 'Commercial C 4"',
+            48 => 'Commercial C 6"',
+            49 => 'Commercial C 8"',
+            50 => 'Commercial C 10"',
+            51 => 'Bulk/Wholesale 1/2"',
+            52 => 'Bulk/Wholesale 3/4"',
+            53 => 'Bulk/Wholesale 1"',
+            54 => 'Bulk/Wholesale 1 1/2"',
+            55 => 'Bulk/Wholesale 2"',
+            56 => 'Bulk/Wholesale 3"',
+            57 => 'Bulk/Wholesale 4"',
+            58 => 'Bulk/Wholesale 6"',
+            59 => 'Bulk/Wholesale 8"',
+            60 => 'Bulk/Wholesale 10"',
         ];
 
         return $types[(int) $rate_code] ?? null;
     }
 
+    /**
+     * Other configurations
+     */
     public function headingRow(): int
     {
         return 2;

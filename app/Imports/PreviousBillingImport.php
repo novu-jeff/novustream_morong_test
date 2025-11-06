@@ -110,9 +110,10 @@ class PreviousBillingImport implements
 
         $total   = $this->cleanAmount($get(['current_bill']) ?? 0);
         $penalty = $this->cleanAmount($get(['penalty']) ?? 0);
+        $arrears = $this->cleanAmount($get(['arrears']) ?? 0);
 
-        // Compute `amount` as total + penalty
-        $amount = $total + $penalty;
+        // Compute `amount` as total + penalty + arrears
+        $amount = $total + $penalty + $arrears;
 
         $bill = Bill::create([
             'reading_id'       => $reading_id,

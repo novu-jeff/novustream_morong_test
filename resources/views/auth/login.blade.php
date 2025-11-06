@@ -88,7 +88,7 @@
                     <button class="ghost" id="signIn">Sign In</button>
                 </div>
                 <div class="overlay-panel overlay-right">
-                    <img src="{{ asset(config('app.product') === 'novustream' ? 'images/clientnobg.png' : 'images/novusurgelogo.png') }}" alt="" class="w-75">
+                    <img src="{{ asset(config('app.product') === 'novustream' ? 'images/clientnobgb.png' : 'images/novusurgelogo.png') }}" alt="" class="w-75">
                     <p>Are you ready to view your bills? and proceed to payments? Start now by creating an account!</p>
                     <a href="{{ route('register')  }}" class="btn btn-primary fw-bold text-white border-2 fs-6 px-5 py-3 text-uppercase fw-bold" id="signUp">Sign Up</a>
                 </div>

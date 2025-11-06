@@ -44,6 +44,8 @@ return new class extends Migration
                 ->default(0);
             $table->string('discount')
                 ->default(0);
+            $table->string('tax')
+                ->default(0);
             $table->string('penalty')
                 ->default(0);
             $table->string('amount');

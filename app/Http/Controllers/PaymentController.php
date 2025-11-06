@@ -305,7 +305,7 @@ class PaymentController extends Controller
         }
 
         // 🧮 Use dynamic penalty computation (from PaymentBreakdownPenalty)
-        $amount = (float)($currentBill['amount'] ?? 0);
+        $amount = (float)($currentBill['total'] ?? 0);
         $amount_afterDue = (float)($currentBill['amount_after_due'] ?? 0);
         $discount = (float)($currentBill['discount'] ?? 0);
         $tax = (float) ($currentBill['tax'] ?? 0);
@@ -333,7 +333,7 @@ class PaymentController extends Controller
             $assumedPenalty = $amount * 0.10;
         }
 
-        $assumedAmountAfterDue = $amount + $assumedPenalty + $previousUnpaid + $tax;
+        $assumedAmountAfterDue = $amount + $previousUnpaid + $tax - $discount;
 
         $data['current_bill']['assumed_penalty'] = $assumedPenalty;
         $data['current_bill']['assumed_amount_after_due'] = $assumedAmountAfterDue;
@@ -376,7 +376,7 @@ class PaymentController extends Controller
 
     private function calculateTotalDue(array $currentBillData, ?array $payload = null, float $fullArrears = 0): array
     {
-
+        // 1. amount -> total
         $currentBill = (float) ($currentBillData['total'] ?? 0);
         $arrears = $fullArrears ?: (float) ($currentBillData['previous_unpaid'] ?? 0);
         $prevPenalty = (float) ($currentBillData['penalty'] ?? 0);
@@ -417,8 +417,8 @@ class PaymentController extends Controller
                 }
             }
         }
-
-        $totalDue = $arrears + ($currentBill - $discount) + $dueDatePenalty - $advancePayment + $tax;
+        // 2. removed arrears
+        $totalDue = ($currentBill - $discount) + $dueDatePenalty - $advancePayment + $tax;
         $totalDue = max(0, round($totalDue, 2));
 
         return [
@@ -508,8 +508,8 @@ class PaymentController extends Controller
 
         $data = $result['data'];
         $now = Carbon::now()->format('Y-m-d H:i:s');
-
-        $amountPay = (float) $data['current_bill']['amount'] + (float) $data['current_bill']['previous_unpaid'];
+        // 3. amount -> total and removed + previous_unpaid
+        $amountPay = (float) $data['current_bill']['total'];
         $change = (float) $payload['payment_amount'] - $amountPay;
         $forAdvancePayment = isset($payload['for_advances']) && $payload['for_advances'];
 
@@ -573,7 +573,6 @@ class PaymentController extends Controller
 
     public function processOnlinePayment(string $reference_no, array $payload)
     {
-        dd($payload);
         $result = $this->getBill($reference_no, $payload, false);
 
         if (isset($result['error'])) {
@@ -594,6 +593,7 @@ class PaymentController extends Controller
 
         // ✅ Define $bill model properly
         $bill = \App\Models\Bill::find($billData['id']);
+        // dd($result);
         if (!$bill) {
             return back()->with('alert', [
                 'status' => 'error',
@@ -602,12 +602,14 @@ class PaymentController extends Controller
         }
 
         // Prepare HitPay payload
-        $amount = number_format((float)$billData['amount'], 2, '.', '');
-        $amount_with_penalty = number_format((float)$billData['amount'] + (float)$billData['penalty'], 2, '.', '');
+        $amount = number_format((float)$billData['total'], 2, '.', '');
+        $discount = number_format((float)$billData['discount'], 2, '.', '');
+        $advancePayment = number_format((float)$billData['advances'], 2, '.', '');
+        $amount_with_penalty = number_format((float)$billData['total'] + (float)$billData['penalty'], 2, '.', '');
         $hitpay_fee = 20;
         $novupay_fee = 10;
         $additional_service_fee = $hitpay_fee + $novupay_fee;
-        $final_amount = $amount + $additional_service_fee;
+        $final_amount = $amount + $additional_service_fee - $advancePayment - $discount;
 
         $payor = $result['data']['client']['name'] ?? ($payload['payor'] ?? 'Customer');
         $email = $result['data']['client']['email'] ?? ($payload['email'] ?? 'jeff@novulutions.com');

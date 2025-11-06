@@ -86,11 +86,11 @@
                             </div>
                             <div style="width: fit-content;">
                                 <p style="font-size: 11px; text-transform: uppercase; margin: 0; font-weight: 600">Republic of the Philippines</p>
-                                <p style="font-size: 15px; text-transform: uppercase; margin: 0; text-transform: uppercase; font-weight: 600">Sta. Rita Water District</p>
-                                <p style="font-size: 12px; text-transform: uppercase; margin: 3px 0 0 0;">Zone 6 Dila-Dila, Santa Rita, Pampanga</p>
-                                <p style="font-size: 12px; text-transform: uppercase; margin: 0;">Facebook Page: Sta. Rita Water District</p>
-                                <p style="font-size: 12px; text-transform: uppercase; margin: 0;">Cell No. 0917-103-2421 | 0917-104-7196</p>
-                                <p style="font-size: 12px; text-transform: uppercase; margin: 0;">TIN 261-304-832-000 Non VAT</p>
+                                <p style="font-size: 15px; text-transform: uppercase; margin: 0; text-transform: uppercase; font-weight: 600">Morong Water District</p>
+                                <p style="font-size: 12px; text-transform: uppercase; margin: 3px 0 0 0;">Zamora Extension, Poblacion Morong Bataan</p>
+                                <!-- <p style="font-size: 12px; text-transform: uppercase; margin: 0;">Tel No.</p> -->
+                                <p style="font-size: 12px; text-transform: uppercase; margin: 0;">Cell No. 0908-396-1654</p>
+                                <p style="font-size: 12px; text-transform: uppercase; margin: 0;">TIN 275-087-677-000</p>
                             </div>
                         </div>
                         <div style="text-align:center; text-transform: uppercase; font-size: 16px; margin: 10px 0 10px 0;">
@@ -161,11 +161,14 @@
                         </div>
                         <div style="margin: 5px 0 5px 0; width: 100%; height: 1px; border-bottom: 1px dashed black;"></div>
                         <div>
+
                             @php
                                 $breakdown = collect($data['current_bill']['breakdown']);
                                 $arrears = $breakdown->firstWhere('name', 'Previous Balance')['amount'] ?? 0;
                                 $deductions = $breakdown->reject(fn($item) => $item['name'] === 'Previous Balance')->values();
+                                $franchiseTax = $data['current_bill']['tax'];
                             @endphp
+
 
                             @forelse($deductions as $deduction)
                                 @php
@@ -184,6 +187,7 @@
                             @php
                                 $discounts = $data['current_bill']['discount'];
                                 $totalDiscount = collect($discounts)->sum('amount');
+                                $prevUnpaid = $data['current_bill']['previous_unpaid'];
                             @endphp
 
                             @forelse($discounts as $discount)
@@ -200,51 +204,26 @@
                                     <div>- ({{$data['current_bill']['advances']}})</div>
                                 </div>
                             @endif
+                                <div style="display: flex; justify-content: space-between;">
+                                    <div style="text-transform: uppercase">Franchise Tax</div>
+                                    <div style="text-transform: uppercase">+ ({{number_format($franchiseTax, 2)}})</div>
+                                </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <div style="text-transform: uppercase;">Arrears:</div>
+                                <div style="text-transform: uppercase;">{{$arrears}}</div>
+                            </div>
                         </div>
-                        @php
-                            $prevUnpaid = $data['current_bill']['previous_unpaid'];
-                            $discount = 0;
-                                if (isset($data['current_bill']['discount'])) {
-                                    if (is_array($data['current_bill']['discount'])) {
-                                        $discount = collect($data['current_bill']['discount'])->sum('amount');
-                                    } else {
-                                        $discount = (float) $data['current_bill']['discount'];
-                                    }
-                                }
-                            $penalty = (float)($data['current_bill']['penalty'] ?? 0);
-                            $dueDate = isset($data['current_bill']['due_date'])
-                                ? \Carbon\Carbon::parse($data['current_bill']['due_date'])
-                                : null;
-
-                            $today = \Carbon\Carbon::today();
-
-                            $applicablePenalty = ($dueDate && $today->gt($dueDate)) ? $penalty : 0;
-                        @endphp
-
-                        @php
-                            $prevUnpaid = $data['current_bill']['previous_unpaid'];
-                            $advances = $data['current_bill']['advances'];
-
-
-                        @endphp
                         <div style="margin: 5px 0 5px 0; width: 100%; height: 1px; border-bottom: 1px dashed black;"></div>
                         <div class="oversized" style="display: flex; justify-content: space-between; margin: 5px 0 5px 0;">
                             <div style="font-size: 20px; font-weight: 800; text-transform: uppercase">Current Billing:</div>
                             <div style="font-size: 20px; font-weight: 800; text-transform: uppercase">
-                                {{number_format($data['current_bill']['total'] - $data['current_bill']['previous_unpaid'], 2)}}
+                                {{ number_format(abs((float) $data['current_bill']['total'] - (float) $prevUnpaid ), 2) }}
                             </div>
                         </div>
-
-                        @if($prevUnpaid != 0)
-                            <div style="display: flex; justify-content: space-between;">
-                                <div style="text-transform: uppercase;">Arrears:</div>
-                                <div style="text-transform: uppercase;">{{$prevUnpaid}}</div>
-                            </div>
-                        @endif
                         <div style="margin: 5px 0 5px 0; width: 100%; height: 1px; border-bottom: 1px dashed black;"></div>
                         <div class="oversized" style="display: flex; justify-content: space-between; align-items: center;">
                             <div style="text-transform: uppercase; font-size: 20px; font-weight: 800;">Amount Due:</div>
-                            <div style="text-transform: uppercase; font-size: 20px; font-weight: 800;">{{ number_format(abs((float) $data['current_bill']['total'] - (float) $discount - (float) $advances - (float) ($franchise->amount ?? 0)), 2) }}</div>
+                            <div style="text-transform: uppercase; font-size: 20px; font-weight: 800;">{{ number_format(abs((float) $data['current_bill']['total'] - (float) $totalDiscount + (float) $franchiseTax), 2) }}  </div>
                         </div>
                         <div style="margin: 5px 0 0 0; display: flex; justify-content: space-between; align-items: center;">
                             <div style="text-transform: uppercase;">Payment After Due Date</div>
@@ -253,7 +232,7 @@
                         <div style="margin: 5px 0 0 0; display: flex; justify-content: space-between; align-items: center;">
                             <div style="text-transform: uppercase;">Penalty Date: </div>
                             <div style="text-transform: uppercase;">
-                                {{ \Carbon\Carbon::parse($data['current_bill']['due_date'])->addDay()->format('m/d/Y') }}
+                                {{\Carbon\Carbon::parse($data['current_bill']['due_date'])->format('m/d/Y')}}
                             </div>
                         </div>
                         <div style="margin: 5px 0 0 0; display: flex; justify-content: space-between; align-items: center;">
@@ -262,10 +241,31 @@
                                 {{number_format($data['current_bill']['penalty'], 2)}}
                             </div>
                         </div>
+                        @php
+                            $tax = $data['current_bill']['tax'] ?? null;
+                            $penalty = $data['client']['sc_discount']['penalty'] ?? null;
+                            $prevUnpaid = (float)($data['current_bill']['previous_unpaid'] ?? 0);
+                            $discount = 0;
+                                if (isset($data['current_bill']['discount'])) {
+                                    if (is_array($data['current_bill']['discount'])) {
+                                        $discount = collect($data['current_bill']['discount'])->sum('amount');
+                                    } else {
+                                        $discount = (float) $data['current_bill']['discount'];
+                                    }
+                                }
+                            $dueDate = isset($data['current_bill']['due_date'])
+                                        ? \Carbon\Carbon::parse($data['current_bill']['due_date'])
+                                        : null;
+
+                            $today = \Carbon\Carbon::today();
+
+                            $applicablePenalty = ($dueDate && $today->gt($dueDate)) ? $penalty : 0;
+                            $advancePayment = (float)($data['current_bill']['advances'] ?? 0);
+                        @endphp
                         <div class="oversized" style="margin: 5px 0 0 0; display: flex; justify-content: space-between; align-items: center;">
                             <div style="text-transform: uppercase; font-size: 20px; font-weight: 800;">Amount After Due:</div>
                             <div style="text-transform: uppercase; font-size: 20px; font-weight: 800;">
-                                {{number_format($data['current_bill']['amount_after_due'] - $penalty - $advances - $discount, 2)}}
+                                {{number_format($data['current_bill']['amount'] + $tax - $discount, 2)}}
                             </div>
                         </div>
                         <div style="margin: 8px 0 5px 0; width: 100%; height: 1px; border-bottom: 1px dashed black;"></div>
